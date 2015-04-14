@@ -1,11 +1,23 @@
-# Reporting API
 
-connection:
-    server: ...
-    username: ...
-    token: ...
-    verify: ...
+
+output:
+    # Reporting API
+    http:
+        server: localhost:9000
+        username: test
+        token: test
+        verify: True
+    buffer:
+        directory: /tmp/producer-cache
+        size: 4096000
 
 # Local staging directory
+pusher:
+    directory: /tmp/producer-cache
+    output: http
 
-directory: ...
+logging:
+    log_level: 3
+    log_location: /tmp/producer.log
+    log_format: "%(asctime)s - %(levelname)s - %(processName)s - %(threadName)s - %(message)s"
+    log_max_size: 2097152
