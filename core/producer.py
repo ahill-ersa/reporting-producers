@@ -14,8 +14,9 @@ from getopt import GetoptError
 from daemon import Daemon
 from reporting.utilities import getLogger, excepthook, get_log_level
 from reporting.__version__ import version
-from reporting.outputs import HTTPOutput, BufferOutput
+from reporting.outputs import KafkaHTTPOutput, BufferOutput
 from reporting.pusher import Pusher
+from reporting.collectors import Collector
 from __builtin__ import True
 
 log = getLogger("producer")
@@ -27,12 +28,15 @@ class ProducerDaemon(Daemon):
         self.config=config
         self.__outputs={}
         self.__pusher_pid=-1
+        self.__collectors=[]
         
     def __sigTERMhandler(self, signum, frame):
         log.debug("Caught signal %d. Exiting" % signum)
         self.quit()
         
     def quit(self):
+        for c in self.__collectors:
+            c.quit()
         if self.__pusher_pid>-1:
             os.kill(self.__pusher_pid, signal.SIGTERM)
         self.__running=False
@@ -50,8 +54,8 @@ class ProducerDaemon(Daemon):
                 log.info("Creating buffer directory %s." % buffer_dir)
                 os.makedirs(buffer_dir)
             self.__outputs['buffer']=BufferOutput(config["output"]['buffer'])
-        if 'http' in config['output']:
-            self.__outputs['http']=HTTPOutput(config["output"]['http'])
+        if 'kafka-http' in config['output']:
+            self.__outputs['kafka-http']=KafkaHTTPOutput(config["output"]['kafka-http'])
         if 'pusher' in config:
             if not 'directory' in config['pusher'] or not 'output' in config['pusher']:
                 print("ERROR: need to speficity directory and output in pusher.")
@@ -71,11 +75,23 @@ class ProducerDaemon(Daemon):
             pusher.start()
             self.__pusher_pid=pusher.pid
             log.info("started pusher pid=%d" % pusher.pid)
-        while self.__running:
-            log.debug("test")
-            time.sleep(1)
+        if 'collector' in config:
+            for collector_config in config['collector']:
+                log.debug("initiating collector %s"%collector_config)
+                log.debug("self.__outputs %s"%self.__outputs)
+                c=Collector(collector_config, config['collector'][collector_config], self.__outputs[config['collector'][collector_config]['output']])
+                self.__collectors.append(c)
+        for c in self.__collectors:
+            c.start()
+        if 'buffer' in self.__outputs:
+            while self.__running:
+                self.__outputs['buffer'].execute()
+                time.sleep(1)
+            self.__outputs['buffer'].cleanup()
         if 'pusher' in config:
             pusher.join()
+        for c in self.__collectors:
+            c.join()
         log.warning("Reporting producer stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
             
 def usage():

@@ -76,12 +76,12 @@ def process(dom, nova_network):
         "data" : {
             "id" : dom.UUIDString(),
             "name" : mac_map["name"],
-            "ip" : mac_map["ip"]
+            "ip" : mac_map["ip"],
             "cpu" : cpu,
-            "read_kb" = read_kb,
-            "write_kb" = write_kb,
-            "transmit_kb" = transmit_kb,
-            "receive_kb" = receive_kb
+            "read_kb" : read_kb,
+            "write_kb" : write_kb,
+            "transmit_kb" : transmit_kb,
+            "receive_kb" : receive_kb
         },
         "id" : str(uuid.uuid4()),
         "timestamp" : int(time.time())

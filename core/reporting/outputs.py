@@ -11,114 +11,121 @@ import sys
 import time
 import traceback
 import uuid
+import threading
 
 import requests
+from requests.exceptions import ConnectionError
+from reporting.exceptions import MessageInvalidError, NetworkConnectionError, RemoteServerError
 from reporting.utilities import getLogger
 
 log = getLogger(__name__)
 
 class IOutput(object):
     def push(self, data):
+        """
+        data is a python object, list or dict
+        """
         assert 0, "This method must be defined."
         
-class HTTPOutput(IOutput):
+class KafkaHTTPOutput(IOutput):
     """Reporting API client."""
-    max_backoff = 60 * 60
-
     headers = {
         "accept": "application/json",
         "content-type": "application/json"
     }
 
     def __init__(self, config):
-        self.base = "https://%s/v1/" % config["server"]
+        self.url = config["url"]
         self.auth = (config["username"], config["token"])
-        self.attempts = config.get("attempts", 180)
+        self.attempts = config.get("attempts", 3)
         self.verify = config.get("verify", True)
-
-    def url(self, obj, key=None):
-        url_str = "%s%s/" % (self.base, obj)
-        if key:
-            return "%s%s" % (url_str, key)
-        else:
-            return url_str
-
-    def backoff(self, attempt):
-        time.sleep(min(self.max_backoff, attempt + random.random() * pow(2, attempt)))
-
-    def list(self, obj):
-        response = requests.get(self.url(obj), headers=self.headers, auth=self.auth)
-        if response.status_code == 200:
-            return response
-        else:
-            raise Exception("HTTP error: %i %s" % (response.status_code, response.text))
 
     def push(self, data):
         if not isinstance(data, list):
             data = [data]
-        attempt = 0
-        while attempt < self.attempts:
-            payload = json.dumps(data)
-            log.debug("push data to http: %s" % payload)
-            response = requests.post(self.url("topic"), headers=self.headers, auth=self.auth, data=json.dumps(data), verify=self.verify)
-            if response.status_code == 204:
-                return
-            elif response.status_code == 500:
-                log.warning("server error: backing off and retrying")
-                self.backoff(attempt)
-            else:
-                raise Exception("HTTP error: %i %s" % (response.status_code, response.text))
-            attempt += 1
-        raise Exception("Message delivery failure: exhausted %i attempts." % self.attempts)
+        payload = json.dumps(data)
+        log.debug("push data to http: %s" % payload)
+        try:
+            response = requests.post(self.url, headers=self.headers, auth=self.auth, data=payload, verify=self.verify)
+        except ConnectionError:
+            raise NetworkConnectionError()
+        log.debug("response %s"%response)
+        if response.status_code == 204:
+            return
+        elif response.status_code == 400:
+            raise MessageInvalidError()
+        elif response.status_code == 500:
+            raise RemoteServerError()
+        else:
+            raise Exception("HTTP error: %i %s" % (response.status_code, response.text))
 
 class CheckDir(object):
     """Ensure sufficient capacity for staging data."""
-    last_check = 0
-    ok = False
 
-    def __init__(self, directory = ".", min_free_mb=100, check_period=30):
-        self.directory = directory
-        self.min_free_mb = min_free_mb
-        self.check_period = check_period
-        self.last_check = 0
+    def __init__(self, directory = ".", cache_size=100, check_period=30):
+        self.__directory = directory
+        self.__cache_size = cache_size
+        self.__check_period = check_period
+        self.__last_check = 0
+        self.__ok = False
 
     def perform_check(self):
-        self.last_check = time.time()
-        filesystem = os.statvfs(self.directory)
-        free = (filesystem.f_bavail * filesystem.f_frsize) / (1024 * 1024)
-        return free >= self.min_free_mb
+        actual_size=self.get_directory_size(self.__directory)
+        log.debug("size of dir %s is %d, cache size is %d"%(self.__directory, actual_size, self.__cache_size))
+        return self.__cache_size > actual_size
 
     def is_ok(self):
-        if (time.time() - self.last_check) >= self.check_period:
-            self.ok = self.perform_check()
-        return self.ok
+        if (time.time() - self.__last_check) >= self.__check_period:
+            self.__ok = self.perform_check()
+        return self.__ok
+    
+    def get_directory_size(self, directory):
+        dir_size = 0
+        for (path, dirs, files) in os.walk(directory):
+            for file in files:
+                filename = os.path.join(path, file)
+                dir_size += os.path.getsize(filename)
+        return dir_size
 
 class BufferOutput(IOutput):
     """Stage data prior to upload."""
     def __init__(self, config):
         self.directory = config['directory']
-        self.check_dir = CheckDir(config['directory'])
+        self.check_dir = CheckDir(config['directory'], config['size'])
+        self.log_space_warning=False
+        self.queue=[]
+        self.write_lock = threading.Lock()
 
     def push(self, data):
-        return
+        with self.write_lock:
+            self.queue.append(data)
+        return True
     
     def execute(self):
-        log_space_warning=False
-        while True:
-            data = sys.stdin.readline().strip()
+        if len(self.queue)>0:
+            with self.write_lock:
+                data = self.queue.pop()
             if len(data) == 0:
-                break
+                return
             if self.check_dir.is_ok():
-                data_id = json.loads(data)["id"]
+                self.log_space_warning=False
+                log.debug("data to save: %s"%data)
+                data_id = data["id"]
                 filename = "%s/%s" % (self.directory, data_id)
                 filename_tmp = "%s/.%s" % (self.directory, data_id)
                 try:
                     with open(filename_tmp, "w") as output:
-                        output.write(data)
+                        output.write(json.dumps(data))
                     os.rename(filename_tmp, filename)
                 except Exception as e:
                     log.error("unexpected error: %s", str(e))
+                    return
             else:
-                if not log_space_warning:
+                if not self.log_space_warning:
                     log.warn("Cache directory %s has reached its capacity.", self.directory)
-                log_space_warning=True
+                self.log_space_warning=True
+                
+    def cleanup(self):
+        log.debug("write all data to cache before exit...")
+        while len(self.queue)>0:
+            self.execute()

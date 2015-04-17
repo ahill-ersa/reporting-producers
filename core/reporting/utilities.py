@@ -8,6 +8,7 @@ import random
 import string
 import socket
 import datetime
+import platform
 
 def getLogger(name):
     """Get logging.Logger instance with logger name convention
@@ -31,3 +32,9 @@ def get_log_level(verbose):
     elif verbose == 2:
         return logging.INFO
     return logging.DEBUG
+
+def get_hostname():
+    try:
+        return socket.getfqdn()
+    except:
+        return platform.node()

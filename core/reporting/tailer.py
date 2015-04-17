@@ -2,8 +2,9 @@
 
 # pylint: disable=broad-except
 
+from reporting.collections import IDataSource
 
-class Tailer(object):
+class Tailer(IDataSource):
     def __init__(self, target):
         self.__target=target
         
