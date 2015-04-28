@@ -50,17 +50,20 @@ class Collector(threading.Thread):
         elif self.__config['input']['type']=='file':
             self.__input=FileReader(self.__config['input']['path'])
         elif self.__config['input']['type']=='class':
-            arguments=self.__config['input']['arguments']
-            self.__input=init_object(self.__config['input']['name'], **arguments)
-        if self.__config['parser']['type']=='match':
-            self.__parser=MatchParser(self.__config['parser']['pattern'].strip(), self.__config['parser']['transform'].strip())
-        elif self.__config['parser']['type']=='split':
-            self.__parser=SplitParser(self.__config['parser']['delimiter'].strip(), self.__config['parser']['transform'].strip())
-        elif self.__config['parser']['type']=='class':
             arguments={}
-            if 'arguments' in self.__config['parser']:
-                arguments=self.__config['parser']['arguments']
-            self.__parser=init_object(self.__config['parser']['name'], **arguments)
+            if 'arguments' in self.__config['input']:
+                arguments=self.__config['input']['arguments']
+            self.__input=init_object(self.__config['input']['name'], **arguments)
+        if 'parser' in self.__config:
+            if self.__config['parser']['type']=='match':
+                self.__parser=MatchParser(self.__config['parser']['pattern'].strip(), self.__config['parser']['transform'].strip())
+            elif self.__config['parser']['type']=='split':
+                self.__parser=SplitParser(self.__config['parser']['delimiter'].strip(), self.__config['parser']['transform'].strip())
+            elif self.__config['parser']['type']=='class':
+                arguments={}
+                if 'arguments' in self.__config['parser']:
+                    arguments=self.__config['parser']['arguments']
+                self.__parser=init_object(self.__config['parser']['name'], **arguments)
         self.__running=True
         self.__session_id=str(uuid.uuid4())
         self.__max_error_count=5

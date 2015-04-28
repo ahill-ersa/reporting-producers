@@ -14,7 +14,7 @@ import uuid
 import threading
 
 import requests
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError, Timeout
 from reporting.exceptions import MessageInvalidError, NetworkConnectionError, RemoteServerError
 from reporting.utilities import getLogger
 
@@ -47,7 +47,7 @@ class KafkaHTTPOutput(IOutput):
         log.debug("push data to http: %s" % payload)
         try:
             response = requests.post(self.url, headers=self.headers, auth=self.auth, data=payload, verify=self.verify)
-        except ConnectionError:
+        except ConnectionError, Timeout:
             raise NetworkConnectionError()
         log.debug("response %s"%response)
         if response.status_code == 204:
@@ -84,7 +84,11 @@ class CheckDir(object):
         for (path, dirs, files) in os.walk(directory):
             for file in files:
                 filename = os.path.join(path, file)
-                dir_size += os.path.getsize(filename)
+                try:
+                    # if the file has been uploaded and gone, ignore
+                    dir_size += os.path.getsize(filename)
+                except:
+                    pass
         return dir_size
 
 class BufferOutput(IOutput):

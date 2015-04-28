@@ -38,7 +38,12 @@ class ProducerDaemon(Daemon):
         for c in self.__collectors:
             c.quit()
         if self.__pusher_pid>-1:
-            os.kill(self.__pusher_pid, signal.SIGTERM)
+            try:
+                os.kill(self.__pusher_pid, signal.SIGTERM)
+            except OSError, err:
+                err = str(err)
+                if err.find("No such process") > 0:
+                    log.info("Pusher process has gone.")
         self.__running=False
 
     def init(self):
@@ -91,7 +96,8 @@ class ProducerDaemon(Daemon):
         if 'pusher' in config:
             pusher.join()
         for c in self.__collectors:
-            c.join()
+            if c.is_alive():
+                c.join()
         log.warning("Reporting producer stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
             
 def usage():
@@ -145,9 +151,6 @@ if __name__ == "__main__":
         if opt in ('-V', '--version'):
             print "Reporting Producer version:", version
             sys.exit(0)    
-
-    
-    log.setLevel(get_log_level(verbose))
     
     if not os.path.exists(config_file) or not os.path.isfile(config_file):
         print "Config file %s does not exist or is not a file." % config_file
@@ -172,7 +175,8 @@ if __name__ == "__main__":
             if 'log_max_size' in config['logging']:
                 file_handler = logging.handlers.RotatingFileHandler(
                                                 config['logging']['log_location'],
-                                                maxBytes=config['logging']['log_max_size'])
+                                                maxBytes=config['logging']['log_max_size'],
+                                                backupCount=3)
             else:
                 try:
                     file_handler = logging.handlers.WatchedFileHandler(
@@ -184,6 +188,8 @@ if __name__ == "__main__":
     
             file_handler.setFormatter(log_formatter)
             log.addHandler(file_handler)
+    if verbose>0:
+        log.setLevel(get_log_level(verbose))
     #print "daemon %s killing %s" % (daemon, killing)
     if killing==True:
         producer.stop()
