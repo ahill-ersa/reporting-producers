@@ -114,6 +114,7 @@ def init_object(class_name, **arguments):
             "Plugin %s (%s) contains a syntax error at line %s" %
             (class_name, e.filename, e.lineno))
     except ImportError, e:
+        log.exception(e)
         raise PluginInitialisationError(
             "Failed to import plugin %s: %s" %
             (class_name, e[0]))
