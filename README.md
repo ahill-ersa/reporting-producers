@@ -34,7 +34,7 @@ Example:
   "session": "b88ab7e6-86f6-40cf-9c2d-c8a5a8a8da1b",
   "data": {
     "timestamp": 1428374675,
-    "hostname": "my-random-vm.local"
+    "hostname": "my-random-vm.local",
     "kb/t": 110.78,
     "tps": 23,
     "mb/s": 2.47
