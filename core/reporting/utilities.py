@@ -41,3 +41,11 @@ def get_hostname():
         return socket.getfqdn()
     except:
         return platform.node()
+
+def list_to_dict(d, l, value):
+    if len(l) == 1:
+        d[l[0]] = value
+    else:
+        if l[0] not in d:
+            d[l[0]] = {}
+        list_to_dict(d[l[0]], l[1:], value)

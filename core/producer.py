@@ -17,6 +17,7 @@ from reporting.__version__ import version
 from reporting.outputs import KafkaHTTPOutput, BufferOutput
 from reporting.pusher import Pusher
 from reporting.collectors import Collector
+from reporting.tailer import Tailer
 from __builtin__ import True
 
 log = getLogger("producer")
@@ -28,6 +29,7 @@ class ProducerDaemon(Daemon):
         self.config=config
         self.__outputs={}
         self.__pusher_pid=-1
+        self.__tailer=None
         self.__collectors=[]
         
     def __sigTERMhandler(self, signum, frame):
@@ -65,6 +67,8 @@ class ProducerDaemon(Daemon):
             if not 'directory' in config['pusher'] or not 'output' in config['pusher']:
                 print("ERROR: need to speficity directory and output in pusher.")
                 return False
+        if 'tailer' in config:
+            self.__tailer=Tailer(config['tailer'])
         return True
         
     def run(self):
@@ -84,7 +88,7 @@ class ProducerDaemon(Daemon):
             for collector_config in config['collector']:
                 log.debug("initiating collector %s"%collector_config)
                 log.debug("self.__outputs %s"%self.__outputs)
-                c=Collector(collector_config, config['collector'][collector_config], self.__outputs[config['collector'][collector_config]['output']])
+                c=Collector(collector_config, config['collector'][collector_config], self.__outputs[config['collector'][collector_config]['output']], self.__tailer)
                 self.__collectors.append(c)
         for c in self.__collectors:
             c.start()

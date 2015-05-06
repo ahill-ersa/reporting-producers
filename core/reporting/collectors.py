@@ -16,7 +16,7 @@ from reporting.exceptions import PluginInitialisationError
 log = getLogger(__name__)
 
 class IDataSource(object):
-    def get_data(self):
+    def get_data(self, **argw):
         assert 0, "This method must be defined."
 
 class CommandRunner(IDataSource):
@@ -37,11 +37,11 @@ class FileReader(IDataSource):
         return content
 
 class Collector(threading.Thread):
-    def __init__(self, collector_name, config, output):
+    def __init__(self, collector_name, config, output, tailer):
         threading.Thread.__init__(self, name=collector_name)
         self.__collector_name=collector_name
         self.__config=config
-        self.__sleep_time=self.__config['input']['frequency']
+        self.__sleep_time=getattr(self.__config['input'], 'frequency', 10)
         self.__input=None
         self.__parser=None
         self.__output=output
@@ -54,6 +54,8 @@ class Collector(threading.Thread):
             if 'arguments' in self.__config['input']:
                 arguments=self.__config['input']['arguments']
             self.__input=init_object(self.__config['input']['name'], **arguments)
+        elif self.__config['input']['type']=='tailer':
+            self.__input=tailer
         if 'parser' in self.__config:
             if self.__config['parser']['type']=='match':
                 self.__parser=MatchParser(self.__config['parser']['pattern'].strip(), self.__config['parser']['transform'].strip())
@@ -80,7 +82,8 @@ class Collector(threading.Thread):
                 count=0
                 try:
                     collect_time=time.time()
-                    data=self.__input.get_data()
+                    args={'config': self.__config['input']}
+                    data=self.__input.get_data(**args)
                     log.debug("raw data %s"%data)
                     if self.__parser:
                         data=self.__parser.parse(data)
