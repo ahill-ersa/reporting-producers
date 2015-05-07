@@ -12,7 +12,7 @@ log = getLogger(__name__)
 
 class ServerLogParser(IParser):
     def parse(self, data):
-        tokens = [x.lower() for x in data.split(";")]
+        tokens = [x.lower().strip() for x in data.split(";")]
         data={}
         data["timestamp"] = int(time.mktime(time.strptime(tokens[0], "%m/%d/%Y %H:%M:%S")))
         data["hostname"] = get_hostname()
@@ -84,7 +84,7 @@ class ServerLogParser(IParser):
 
 class AccountingLogParser(IParser):
     def parse(self, data):
-        tokens = [x.lower() for x in data.split(";")]
+        tokens = [x.lower().strip() for x in data.split(";")]
         data={}
         data["timestamp"] = int(time.mktime(time.strptime(tokens[0], "%m/%d/%Y %H:%M:%S")))
         data["hostname"] = get_hostname()

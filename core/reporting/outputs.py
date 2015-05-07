@@ -44,7 +44,7 @@ class KafkaHTTPOutput(IOutput):
         if not isinstance(data, list):
             data = [data]
         payload = json.dumps(data)
-        log.debug("push data to http: %s" % payload)
+        log.debug("push data to http: %s" % payload[:1024])
         try:
             response = requests.post(self.url, headers=self.headers, auth=self.auth, data=payload, verify=self.verify)
         except ConnectionError, Timeout:
@@ -106,6 +106,7 @@ class BufferOutput(IOutput):
         return True
     
     def execute(self):
+        json.encoder.FLOAT_REPR = lambda f: ("%.2f" % f)
         if len(self.queue)>0:
             with self.write_lock:
                 data = self.queue.pop()

@@ -5,6 +5,10 @@
 from reporting.parsers import IParser
 import re
 from fnmatch import fnmatch
+from reporting.utilities import getLogger, get_hostname
+import time
+
+log = getLogger(__name__)
 
 class DfParser(IParser):
     def __init__(self, exclude_devices):
@@ -25,7 +29,11 @@ class DfParser(IParser):
             filesystem["available"] = int(line[3])
             filesystem["mountpoint"] = line[5]
             result.append(filesystem)
-        return str(result).replace("'",'"')
+        output = {}
+        output['df'] = result
+        output['timestamp'] = int(time.time())
+        output['hostname'] = get_hostname()
+        return output
     
 class IfstatParser(IParser):
     def __init__(self, device):
@@ -37,7 +45,11 @@ class IfstatParser(IParser):
             line = line.split()
             data["kb_in"] = float(line[0])
             data["kb_out"] = float(line[1])
-        return str(data).replace("'",'"')
+        output = {}
+        output['ifstat'] = data
+        output['timestamp'] = int(time.time())
+        output['hostname'] = get_hostname()
+        return output
 
 class CPUParser(IParser):
     def parse(self, data):
@@ -57,7 +69,9 @@ class CPUParser(IParser):
                     data[line[0]]['softirq'] = int(line[7])
                     if len(line)>=9:
                         data[line[0]]['steal'] = int(line[8])
-        return str(data).replace("'",'"')
+        data['timestamp'] = int(time.time())
+        data['hostname'] = get_hostname()
+        return data
 
 class MemParser(IParser):
     def parse(self, data):
@@ -80,7 +94,9 @@ class MemParser(IParser):
             if line[0].startswith('SUnreclaim'):
                 data['slab_unreclaimable'] = int(line[1])
         data['used'] = data['total'] - (data['free'] + data['buffered'] + data['cached'] + data['slab_total'])
-        return str(data).replace("'",'"')
+        data['timestamp'] = int(time.time())
+        data['hostname'] = get_hostname()
+        return data
 
 class NetDevParser(IParser):
     fields = {
@@ -116,4 +132,6 @@ class NetDevParser(IParser):
                     data[interface][direction] = {}
                     for field in self.fields:
                         data[interface][direction][field] = int(line[self.directions[direction] + self.fields[field]])
-        return str(data).replace("'",'"')
+        data['timestamp'] = int(time.time())
+        data['hostname'] = get_hostname()
+        return data

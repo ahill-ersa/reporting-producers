@@ -4,8 +4,9 @@
 
 from reporting.parsers import IParser
 from reporting.collectors import IDataSource
-from reporting.utilities import getLogger
+from reporting.utilities import getLogger, get_hostname
 import json
+import time
 
 log = getLogger(__name__)
 
@@ -23,7 +24,7 @@ def value(s):
         return numeric * 1024 * 1024 *1024
 
 class KstatInput(IDataSource):
-    def get_data(self):
+    def get_data(self, **kwargs):
         dir = "/proc/spl/kstat/zfs/"
         files = [ "arcstats", "dmu_tx", "zfetchstats", "zil" ]
         data={}
@@ -37,7 +38,9 @@ class KstatInput(IDataSource):
                     line = line.split()
                     data[file][line[0]] = int(line[2])
         
-        return json.dumps(data)
+        data['timestamp'] = int(time.time())
+        data['hostname'] = get_hostname()
+        return data
 
 class IostatParser(IParser):
     def parse(self, data):
@@ -51,7 +54,9 @@ class IostatParser(IParser):
             data[line[0]]["free"] = value(line[2])
             data[line[0]]["kb_read"] = value(line[5])
             data[line[0]]["kb_write"] = value(line[6])
-        return json.dumps(data)
+        data['timestamp'] = int(time.time())
+        data['hostname'] = get_hostname()
+        return data
 
 
 class ListParser(IParser):
@@ -64,6 +69,8 @@ class ListParser(IParser):
             data[line[0]]["available"] = value(line[1])
             data[line[0]]["used"] = value(line[2])
             data[line[0]]["ratio"] = line[3]
-        return json.dumps(data)
+        data['timestamp'] = int(time.time())
+        data['hostname'] = get_hostname()
+        return data
 
     

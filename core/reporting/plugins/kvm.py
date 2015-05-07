@@ -7,7 +7,7 @@ import libvirt
 from xml.etree import ElementTree
 from reporting.parsers import IParser
 from reporting.collectors import IDataSource
-from reporting.utilities import getLogger
+from reporting.utilities import getLogger, get_hostname
 import json
 
 log = getLogger(__name__)
@@ -87,7 +87,7 @@ def process(dom, nova_network):
         }
 
 class LibvirtInput(IDataSource):
-    def get_data(self):
+    def get_data(self, **kwargs):
         #log.debug(libvirt.__dict__)
         conn = libvirt.openReadOnly(None)
         data={}
@@ -95,4 +95,6 @@ class LibvirtInput(IDataSource):
         for domID in conn.listDomainsID():
             dom = conn.lookupByID(domID)
             data[domID]=process(dom, nova_network)
-        return json.dumps(data)
+        data['timestamp'] = int(time.time())
+        data['hostname'] = get_hostname()
+        return data

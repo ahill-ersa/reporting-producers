@@ -79,7 +79,7 @@ class ProducerDaemon(Daemon):
         sys.excepthook = excepthook
         log.warning("Reporting producer started at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
         if 'pusher' in config:
-            pusher=Pusher(self.__outputs[config['pusher']['output']], config['pusher']['directory'])
+            pusher=Pusher(self.__outputs[config['pusher']['output']], config['pusher']['directory'], config['pusher'].get('batch',1))
             pusher.daemon=True
             pusher.start()
             self.__pusher_pid=pusher.pid

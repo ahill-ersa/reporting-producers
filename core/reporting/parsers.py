@@ -3,8 +3,10 @@
 # pylint: disable=broad-except
 
 import re
+import json
+import time
 
-from reporting.utilities import getLogger
+from reporting.utilities import getLogger, get_hostname
 
 log = getLogger(__name__)
 
@@ -20,7 +22,11 @@ class MatchParser(IParser):
         log.debug("match %s" % self.__pattern)
         match_obj = re.match(self.__pattern, data, re.M|re.I)
         match_groups = match_obj.groups()
-        return self.__transform.format(*match_groups)
+        result = self.__transform.format(*match_groups)
+        output = json.loads(result)
+        output['timestamp'] = int(time.time())
+        output['hostname'] = get_hostname()
+        return output
     
 class SplitParser(IParser):
     def __init__(self, delimiter, transform):
@@ -29,4 +35,11 @@ class SplitParser(IParser):
     def parse(self, data):
         log.debug("delimiter %s" % self.__delimiter)
         list = re.split(self.__delimiter, data)
-        return self.__transform.format(*list)
+        result = self.__transform.format(*list)
+        log.debug("result %s"%result)
+        output = json.loads(result)
+        log.debug("output %s"%output)
+        output['timestamp'] = int(time.time())
+        output['hostname'] = get_hostname()
+        return output
+    

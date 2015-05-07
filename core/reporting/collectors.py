@@ -8,6 +8,7 @@ import time
 import shlex
 import uuid
 import json
+import collections
 
 from reporting.parsers import MatchParser, SplitParser
 from reporting.utilities import getLogger, get_hostname
@@ -16,13 +17,13 @@ from reporting.exceptions import PluginInitialisationError
 log = getLogger(__name__)
 
 class IDataSource(object):
-    def get_data(self, **argw):
+    def get_data(self, **kwargs):
         assert 0, "This method must be defined."
 
 class CommandRunner(IDataSource):
     def __init__(self, cmd):
         self.__cmd=cmd
-    def get_data(self):
+    def get_data(self, **kwargs):
         log.debug("running cmd %s"%self.__cmd)
         pipe = Popen(shlex.split(self.__cmd), stdout=PIPE).stdout
         return ''.join(pipe.readlines()).strip()
@@ -30,7 +31,7 @@ class CommandRunner(IDataSource):
 class FileReader(IDataSource):
     def __init__(self, path):
         self.__path=path
-    def get_data(self):
+    def get_data(self, **kwargs):
         log.debug("reading file %s"%self.__path)
         with open(self.__path) as f:
             content = ''.join(f.readlines()).strip()
@@ -41,7 +42,7 @@ class Collector(threading.Thread):
         threading.Thread.__init__(self, name=collector_name)
         self.__collector_name=collector_name
         self.__config=config
-        self.__sleep_time=getattr(self.__config['input'], 'frequency', 10)
+        self.__sleep_time=self.__config['input'].get('frequency',10)
         self.__input=None
         self.__parser=None
         self.__output=output
@@ -78,33 +79,50 @@ class Collector(threading.Thread):
         error_count=0
         log.info("collector %s has started."%self.__collector_name)
         while self.__running:
+            args={'config': self.__config['input']}
             if count==self.__sleep_time:
                 count=0
                 try:
-                    collect_time=time.time()
-                    args={'config': self.__config['input']}
                     data=self.__input.get_data(**args)
-                    log.debug("raw data %s"%data)
-                    if self.__parser:
-                        data=self.__parser.parse(data)
-                    log.debug("parsed data %s"%data)
-                    payload={"id": str(uuid.uuid4()), "timestamp": int(collect_time),
-                             "hostname": get_hostname(), "session": self.__session_id}
-                    if 'metadata' in self.__config:
-                        for m in self.__config['metadata']:
-                            payload[m]=self.__config['metadata'][m]
-                    payload['data']=json.loads(data)
-                    log.debug("payload to push: %s"%payload)
-                    self.__output.push(payload)
+                    if isinstance(data, collections.deque) or isinstance(data, list):
+                        payload=[]
+                        for line in data:
+                            log.debug("raw data %s"%line)
+                            payload.append(self.generate_payload(line))
+                        if len(payload)>0:
+                            self.__output.push(payload)
+                        else:
+                            continue
+                    else:
+                        log.debug("raw data %s"%data)
+                        payload=self.generate_payload(data)
+                        self.__output.push(payload)
                 except:
                     log.exception('unable to get or parse data.')
                     error_count+=1
                     if error_count>=self.__max_error_count:
                         break
+                    if self.__config['input']['type']=='tailer':
+                        self.__input.fail(**args)
+                else:
+                    if self.__config['input']['type']=='tailer':
+                        self.__input.success(**args)
             else:
                 time.sleep(1)
                 count+=1
         log.info("collector %s has stopped."%self.__collector_name)
+        
+    def generate_payload(self, data):
+        if self.__parser:
+            data=self.__parser.parse(data)
+        log.debug("parsed data %s"%data)
+        payload={"id": str(uuid.uuid4()), "session": self.__session_id}
+        if 'metadata' in self.__config:
+            for m in self.__config['metadata']:
+                payload[m]=self.__config['metadata'][m]
+        payload['data']=data
+        log.debug("payload to push: %s"%payload)
+        return payload
         
 def init_object(class_name, **arguments):
     mod_name = '.'.join(class_name.split('.')[:-1])

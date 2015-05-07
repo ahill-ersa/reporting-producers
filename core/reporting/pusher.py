@@ -18,6 +18,7 @@ import signal
 import requests
 import yaml
 from reporting.utilities import getLogger, excepthook
+from reporting.exceptions import MessageInvalidError, NetworkConnectionError, RemoteServerError
 
 log = getLogger(__name__)
 
@@ -27,11 +28,12 @@ class Pusher(multiprocessing.Process):
     ignore = set()
     max_backoff = 2 * 60
 
-    def __init__(self, output, directory):
+    def __init__(self, output, directory, batch=1):
         super(Pusher, self).__init__()
         self.client = output
         self.directory = directory
         self.__running=True
+        self.__batch=batch
         self.__back_off=0
 
     def __sigTERMhandler(self, signum, frame):
