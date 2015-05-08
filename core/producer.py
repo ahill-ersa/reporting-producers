@@ -14,7 +14,7 @@ from getopt import GetoptError
 from daemon import Daemon
 from reporting.utilities import getLogger, excepthook, get_log_level
 from reporting.__version__ import version
-from reporting.outputs import KafkaHTTPOutput, BufferOutput
+from reporting.outputs import KafkaHTTPOutput, BufferOutput, FileOutput
 from reporting.pusher import Pusher
 from reporting.collectors import Collector
 from reporting.tailer import Tailer
@@ -63,6 +63,8 @@ class ProducerDaemon(Daemon):
             self.__outputs['buffer']=BufferOutput(config["output"]['buffer'])
         if 'kafka-http' in config['output']:
             self.__outputs['kafka-http']=KafkaHTTPOutput(config["output"]['kafka-http'])
+        if 'file' in config['output']:
+            self.__outputs['file']=FileOutput(config["output"]['file'])
         if 'pusher' in config:
             if not 'directory' in config['pusher'] or not 'output' in config['pusher']:
                 print("ERROR: need to speficity directory and output in pusher.")

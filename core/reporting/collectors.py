@@ -10,7 +10,7 @@ import uuid
 import json
 import collections
 
-from reporting.parsers import MatchParser, SplitParser
+from reporting.parsers import MatchParser, SplitParser, DummyParser
 from reporting.utilities import getLogger, get_hostname
 from reporting.exceptions import PluginInitialisationError
 
@@ -62,6 +62,8 @@ class Collector(threading.Thread):
                 self.__parser=MatchParser(self.__config['parser']['pattern'].strip(), self.__config['parser']['transform'].strip())
             elif self.__config['parser']['type']=='split':
                 self.__parser=SplitParser(self.__config['parser']['delimiter'].strip(), self.__config['parser']['transform'].strip())
+            elif self.__config['parser']['type']=='dummy':
+                self.__parser=DummyParser()
             elif self.__config['parser']['type']=='class':
                 arguments={}
                 if 'arguments' in self.__config['parser']:
@@ -110,6 +112,7 @@ class Collector(threading.Thread):
             else:
                 time.sleep(1)
                 count+=1
+        self.__output.close()
         log.info("collector %s has stopped."%self.__collector_name)
         
     def generate_payload(self, data):

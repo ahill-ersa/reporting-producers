@@ -6,6 +6,7 @@ import os
 import glob
 import sqlite3
 import collections
+import errno
 from reporting.utilities import getLogger
 from reporting.collectors import IDataSource
 
@@ -64,33 +65,61 @@ class Tailer(IDataSource):
     def find_new_file(self, path):
         tracker=self.__tracker[path]
         current_file=tracker['filename']
+        current_st=None
+        need_to_update=False
         try:
             current_st=os.stat(current_file)
         except EnvironmentError, err:
             if err.errno == errno.ENOENT:
                 log.info('file %s removed' % current_file)
                 tracker['file_handle'].close()
-        need_to_update=False
-        if tracker['inode']!=current_st.st_ino:
-            log.info('file %s rotated' % current_file)
-            # need to read for the last time before closing
-            lines = self.get_lines(tracker['file_handle'])
-            if len(lines)>0:
-                self.__tracker[path]['cache']=lines
-            tracker['file_handle'].close()
-        file_list=self.query_files(path)
-        # file is gone or has reached the end of file
-        if tracker['file_handle'].closed or tracker['file_handle'].tell()>=current_st.st_size:
-            for file in file_list:
-                if file['filename']!=current_file and file['mtime']>current_st.st_mtime:
-                    # found a new file
-                    tracker['filename']=file['filename']
-                    tracker['inode']=file['inode']
-                    tracker['mtime']=file['mtime']
-                    tracker['size']=file['size']
-                    tracker['line_count']=0
-                    need_to_update=True
-                    break
+            else:
+                log.exception("can't stat file %s"%current_file)
+                return
+        if tracker['file_handle'].closed:
+            file_list=self.query_files(path)
+            if len(file_list)==0:
+                log.error("No file found for path %s"%path)
+                return
+            log.info("open newest file, stat %s"%file_list[-1])
+            self.__tracker[path]={"inode":file_list[-1]['inode'], 
+                                    "filename":file_list[-1]['filename'], 
+                                    "mtime": file_list[-1]['mtime'], 
+                                    "size": file_list[-1]['size'], 
+                                    "line_count": 0,
+                                    "file_handle": open(file_list[-1]['filename'], 'r')}
+            need_to_update=True
+        else:
+            if tracker['inode']!=current_st.st_ino:
+                log.info('file %s rotated' % current_file)
+                # need to read for the last time before closing
+                lines = self.get_lines(tracker['file_handle'])
+                if len(lines)>0:
+                    self.__tracker[path]['cache']=lines
+                tracker['file_handle'].close()
+                tracker['file_handle']=open(tracker['filename'], 'r')
+                tracker['inode']=current_st.st_ino
+                tracker['mtime']=current_st.st_mtime
+                tracker['size']=current_st.st_size
+                tracker['line_count']=0
+                need_to_update=True
+            else:
+                file_list=self.query_files(path)
+                log.debug("current file %s; current location %d ; file size %d "% (current_file, tracker['file_handle'].tell(), current_st.st_size))
+                if tracker['file_handle'].tell()>=current_st.st_size:
+                    for file in file_list:
+                        if file['filename']!=current_file and file['mtime']>current_st.st_mtime:
+                            # found a new file
+                            log.info("reached end of file %s, track a new file %s"%(current_file, file['filename']))
+                            tracker['filename']=file['filename']
+                            tracker['inode']=file['inode']
+                            tracker['mtime']=file['mtime']
+                            tracker['size']=file['size']
+                            tracker['line_count']=0
+                            tracker['file_handle'].close()
+                            tracker['file_handle']=open(tracker['filename'], 'r')
+                            need_to_update=True
+                            break
         if need_to_update:
             self.__update_tracker(path)
 

@@ -43,3 +43,10 @@ class SplitParser(IParser):
         output['hostname'] = get_hostname()
         return output
     
+class DummyParser(IParser):
+    def parse(self, data):
+        output = {}
+        output['timestamp'] = int(time.time())
+        output['hostname'] = get_hostname()
+        output['content'] = data.strip()
+        return output

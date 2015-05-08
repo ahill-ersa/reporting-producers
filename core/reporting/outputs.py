@@ -26,6 +26,8 @@ class IOutput(object):
         data is a python object, list or dict
         """
         assert 0, "This method must be defined."
+    def close(self):
+        pass
         
 class KafkaHTTPOutput(IOutput):
     """Reporting API client."""
@@ -58,6 +60,23 @@ class KafkaHTTPOutput(IOutput):
             raise RemoteServerError()
         else:
             raise Exception("HTTP error: %i %s" % (response.status_code, response.text))
+
+class FileOutput(IOutput):
+    def __init__(self, config):
+        self.path = config["path"]
+        self.__handle=open(self.path, "w")
+
+    def push(self, data):
+        if not isinstance(data, list):
+            data = [data]
+        for line in data:
+            self.__handle.write(json.dumps(line) + os.linesep)
+        self.__handle.flush()
+            
+    def close(self):
+        log.debug("closing file handle for %s" % self.path)
+        if self.__handle:
+            self.__handle.close()
 
 class CheckDir(object):
     """Ensure sufficient capacity for staging data."""

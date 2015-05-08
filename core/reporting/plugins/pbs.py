@@ -80,7 +80,7 @@ class ServerLogParser(IParser):
                         if "owner" in data["attributes"]:
                             data["attributes"]["owner"] = data["attributes"]["owner"].split("@")[0]
     
-        return json.dumps(data)
+        return data
 
 class AccountingLogParser(IParser):
     def parse(self, data):
@@ -128,4 +128,4 @@ class AccountingLogParser(IParser):
             elif isinstance(kv[0], list):
                 list_to_dict(data, kv[0], kv[1])
     
-        return json.dumps(data)
+        return data
