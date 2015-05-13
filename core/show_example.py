@@ -4,6 +4,7 @@
 
 from reporting.plugins.pbs import AccountingLogParser, ServerLogParser, MomLogParser
 from reporting.plugins.xfs import QuotaReportParser
+from reporting.plugins.nfs import MountstatsParser
 import json
 import sys
 
@@ -90,7 +91,69 @@ class ExamplePresenter():
                 "wmenz               0   41943040   52428800     00 [--------]",
                 "asquared            0   41943040   52428800     00 [--------]"]
         print pretty_print(parser.parse("\n".join(input)))
-
+    def show_nfs_mountstats(object):
+        parser=MountstatsParser(fstype=["nfs","nfs4"])
+        input= \
+"""
+device sunrpc mounted on /var/lib/nfs/rpc_pipefs with fstype rpc_pipefs
+device emunfs.cloud.ersa.edu.au:/home/users/ mounted on /home/users with fstype nfs4 statvers=1.0
+    opts:    rw,vers=4,rsize=32768,wsize=32768,namlen=255,acregmin=3,acregmax=60,acdirmin=30,acdirmax=60,soft,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=130.220.210.166,minorversion=0,local_lock=none
+    age:    5366645
+    caps:    caps=0xffff,wtmult=512,dtsize=32768,bsize=0,namlen=255
+    nfsv4:    bm0=0xfdffbfff,bm1=0xf9be3e,acl=0x3
+    sec:    flavor=1,pseudoflavor=1
+    events:    49046 172884523 13215088 27700296 524 10692 292022123 205007498 202 13255586 25953103 106920759 1049 13230888 39677614 39677732 982 39684383 0 3149 191746776 0 0 0 0 0 0 
+    bytes:    344623646258 51399162292 0 0 20761165634 53502552035 17454204 25953103 
+    RPC iostats version: 1.0  p/v: 100003/4 (nfs)
+    xprt:    tcp 834 0 10 0 48 136753376 136753352 0 314402667 0
+    per-op statistics
+            NULL: 0 0 0 0 0 0 0 0
+            READ: 13745489 13745489 0 2474693724 21625405232 181085 7089389 7451549
+           WRITE: 15618104 15618111 0 56669809844 2061589408 15720224 46042131 62030231
+          COMMIT: 13761718 13761721 0 2477825920 1706453032 633681 54928784 55801930
+            OPEN: 39680898 39680898 0 10476367688 15872333096 25445229 19145724 45215679
+    OPEN_CONFIRM: 2592 2592 0 466684 176256 36 4662 4747
+     OPEN_NOATTR: 0 0 0 0 0 0 0 0
+    OPEN_DOWNGRADE: 0 0 0 0 0 0 0 0
+           CLOSE: 39680704 39680704 0 7460065216 5237852928 2654369 9178158 12275457
+         SETATTR: 13233705 13233706 0 2699755136 3070143992 70089 17109582 19351826
+          FSINFO: 1 1 0 148 108 0 0 0
+           RENEW: 0 0 0 0 0 0 0 0
+     SETCLIENTID: 0 0 0 0 0 0 0 0
+    SETCLIENTID_CONFIRM: 0 0 0 0 0 0 0 0
+            LOCK: 347 347 0 83200 23596 6 756 770
+           LOCKT: 0 0 0 0 0 0 0 0
+           LOCKU: 347 347 0 69320 23596 5 1203 1216
+          ACCESS: 118574 118574 0 20450956 26745640 1089 677963 722500
+         GETATTR: 49047 49049 0 8246364 10190476 128137 373170 550552
+          LOOKUP: 37140 37140 0 7496768 8019412 241 79784 83731
+     LOOKUP_ROOT: 0 0 0 0 0 0 0 0
+          REMOVE: 8063 8063 0 1565560 1899048 25 28653 29217
+          RENAME: 9088 9088 0 2646488 3962368 45 27668 28322
+            LINK: 0 0 0 0 0 0 0 0
+         SYMLINK: 0 0 0 0 0 0 0 0
+          CREATE: 561 561 0 146748 269024 5 946 979
+        PATHCONF: 1 1 0 144 72 0 0 0
+          STATFS: 89597 89600 0 13619200 10393252 107351 576927 771350
+        READLINK: 0 0 0 0 0 0 0 0
+         READDIR: 1426 1426 0 275100 4859744 8 7863 8003
+     SERVER_CAPS: 2 2 0 288 176 0 0 0
+     DELEGRETURN: 3601 3601 0 681888 772388 59 48061 51034
+          GETACL: 0 0 0 0 0 0 0 0
+          SETACL: 0 0 0 0 0 0 0 0
+    FS_LOCATIONS: 0 0 0 0 0 0 0 0
+    RELEASE_LOCKOWNER: 347 347 0 48572 15268 4 738 768
+     EXCHANGE_ID: 0 0 0 0 0 0 0 0
+    CREATE_SESSION: 0 0 0 0 0 0 0 0
+    DESTROY_SESSION: 0 0 0 0 0 0 0 0
+        SEQUENCE: 0 0 0 0 0 0 0 0
+    GET_LEASE_TIME: 0 0 0 0 0 0 0 0
+    RECLAIM_COMPLETE: 0 0 0 0 0 0 0 0
+       LAYOUTGET: 0 0 0 0 0 0 0 0
+    GETDEVICEINFO: 0 0 0 0 0 0 0 0
+    LAYOUTCOMMIT: 0 0 0 0 0 0 0 0
+"""
+        print pretty_print(parser.parse(input))
 
 def pretty_print(str):
     #parsed = json.loads(str)
@@ -101,7 +164,7 @@ def print_usage():
     print "  example_name is one of %s" % schemas
 
 if __name__ == '__main__':
-    schemas=["pbs.accouting.log","pbs.server.log","pbs.mom.log","xfs.quota.report"]
+    schemas=["pbs.accouting.log","pbs.server.log","pbs.mom.log","xfs.quota.report","nfs.mountstats"]
     if len(sys.argv)<2:
         print_usage()
         sys.exit(1)

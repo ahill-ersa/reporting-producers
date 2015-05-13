@@ -44,7 +44,7 @@ def get_log_level(verbose):
 
 def get_hostname():
     global global_vars
-    if 'hostname' in global_vars:
+    if global_vars is not None and 'hostname' in global_vars:
         return global_vars['hostname']
     try:
         return socket.getfqdn()
