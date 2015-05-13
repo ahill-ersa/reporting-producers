@@ -12,7 +12,7 @@ import getopt
 from getopt import GetoptError
 
 from daemon import Daemon
-from reporting.utilities import getLogger, excepthook, get_log_level
+from reporting.utilities import getLogger, excepthook, get_log_level, set_global
 from reporting.__version__ import version
 from reporting.outputs import KafkaHTTPOutput, BufferOutput, FileOutput
 from reporting.pusher import Pusher
@@ -49,6 +49,9 @@ class ProducerDaemon(Daemon):
         self.__running=False
 
     def init(self):
+        if 'global' in config:
+            global_vars=config['global']
+            set_global(global_vars)
         if 'buffer' in config['output']:
             if not 'directory' in config['output']['buffer']:
                 print("ERROR: buffer directory not specified in config.")

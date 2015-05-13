@@ -10,6 +10,12 @@ import socket
 import datetime
 import platform
 
+global_vars=None
+
+def set_global(vars):
+    global global_vars
+    global_vars = vars
+
 def getLogger(name):
     """Get logging.Logger instance with logger name convention
     """
@@ -37,6 +43,9 @@ def get_log_level(verbose):
     return logging.DEBUG
 
 def get_hostname():
+    global global_vars
+    if 'hostname' in global_vars:
+        return global_vars['hostname']
     try:
         return socket.getfqdn()
     except:

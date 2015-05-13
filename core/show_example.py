@@ -2,7 +2,8 @@
 
 # pylint: disable=broad-except
 
-from reporting.plugins.pbs import AccountingLogParser, ServerLogParser
+from reporting.plugins.pbs import AccountingLogParser, ServerLogParser, MomLogParser
+from reporting.plugins.xfs import QuotaReportParser
 import json
 import sys
 
@@ -10,7 +11,7 @@ class ExamplePresenter():
     def show_pbs_accouting_log(object):
         parser=AccountingLogParser()
         input=["05/01/2015 00:29:15;Q;27570.emuheadnode.cloud.ersa.edu.au;queue=emu",
-               "05/01/2015 00:29:15;E;27542.emuheadnode.cloud.ersa.edu.au;user=mpenna group=mpenna jobname=pull.16.sh queue=emu ctime=1430377782 qtime=1430377783 etime=1430377783 start=1430390087 owner=mpenna@cw-vm-d195.sa.nectar.org.au exec_host=cw-vm-d144.sa.nectar.org.au/7+cw-vm-d144.sa.nectar.org.au/6+cw-vm-d144.sa.nectar.org.au/5+cw-vm-d144.sa.nectar.org.au/4+cw-vm-d144.sa.nectar.org.au/3+cw-vm-d144.sa.nectar.org.au/2+cw-vm-d144.sa.nectar.org.au/1+cw-vm-d144.sa.nectar.org.au/0 Resource_List.mem=4gb Resource_List.neednodes=1:ppn=8 Resource_List.nodect=1 Resource_List.nodes=1:ppn=8 Resource_List.walltime=10:00:00 session=21825 end=1430405955 Exit_status=0 resources_used.cput=00:00:10 resources_used.mem=3348kb resources_used.vmem=54768kb resources_used.walltime=04:24:28"]
+               "05/01/2015 00:29:15;E;27542.emuheadnode.cloud.ersa.edu.au;user=mpenna group=mpenna jobname=pull.16.sh queue=emu ctime=1430377782 qtime=1430377783 etime=1430377783 start=1430390087 owner=mpenna@cw-vm-d195.sa.nectar.org.au exec_host=cw-vm-d144.sa.nectar.org.au/7+cw-vm-d144.sa.nectar.org.au/6+cw-vm-d144.sa.nectar.org.au/5+cw-vm-d144.sa.nectar.org.au/4+cw-vm-d144.sa.nectar.org.au/3+cw-vm-d144.sa.nectar.org.au/2+cw-vm-d144.sa.nectar.org.au/1+cw-vm-d145.sa.nectar.org.au/0-3 Resource_List.mem=4gb Resource_List.neednodes=1:ppn=8 Resource_List.nodect=1 Resource_List.nodes=1:ppn=8 Resource_List.walltime=10:00:00 session=21825 end=1430405955 Exit_status=0 resources_used.cput=00:00:10 resources_used.mem=3348kb resources_used.vmem=54768kb resources_used.walltime=04:24:28"]
         for i in input:
             print pretty_print(parser.parse(i))
     def show_pbs_server_log(object):
@@ -49,17 +50,58 @@ class ExamplePresenter():
                 "05/04/2015 23:52:00;0002;PBS_Server;Svr;PBS_Server;Torque Server Version = 3.0.5, loglevel = 0"]
         for i in input:
             print pretty_print(parser.parse(i))
+    def show_pbs_mom_log(object):
+        parser=MomLogParser()
+        input=["05/04/2015 18:06:01;0080;   pbs_mom.2137;Job;27912.emuheadnode.cloud.ersa.edu.au;scan_for_terminated: job 27912.emuheadnode.cloud.ersa.edu.au task 1 terminated, sid=26219",
+                "05/04/2015 18:06:01;0008;   pbs_mom.2137;Job;27912.emuheadnode.cloud.ersa.edu.au;job was terminated",
+                "05/04/2015 18:06:01;0080;   pbs_mom.2137;Svr;preobit_reply;top of preobit_reply",
+                "05/04/2015 18:06:01;0080;   pbs_mom.2137;Svr;preobit_reply;DIS_reply_read/decode_DIS_replySvr worked, top of while loop",
+                "05/04/2015 18:06:01;0080;   pbs_mom.2137;Svr;preobit_reply;in while loop, no error from job stat",
+                "05/04/2015 18:06:01;0080;   pbs_mom.2137;Job;27912.emuheadnode.cloud.ersa.edu.au;obit sent to server",
+                "05/04/2015 18:06:01;0080;   pbs_mom.2137;Job;27912.emuheadnode.cloud.ersa.edu.au;removing transient job directory /mnt/tmp/27912.emuheadnode.cloud.ersa.edu.au",
+                "05/04/2015 18:06:01;0080;   pbs_mom.2137;Job;27912.emuheadnode.cloud.ersa.edu.au;removed job script",
+                "05/04/2015 18:06:10;0001;   pbs_mom.2137;Job;TMomFinalizeJob3;job 27934.emuheadnode.cloud.ersa.edu.au started, pid = 2053",
+                "05/04/2015 18:08:36;0002;   pbs_mom.2137;Svr;pbs_mom;Torque Mom Version = 4.1.7, loglevel = 0",
+                "03/11/2015 15:48:45;0080;   pbs_mom;Job;1086553.tizard1;scan_for_terminated: job 1086553.tizard1 task 1 terminated, sid=51441",
+                "03/11/2015 15:48:45;0008;   pbs_mom;Job;1086553.tizard1;job was terminated",
+                "03/11/2015 15:48:45;0080;   pbs_mom;Svr;preobit_reply;top of preobit_reply",
+                "03/11/2015 15:48:45;0080;   pbs_mom;Svr;preobit_reply;DIS_reply_read/decode_DIS_replySvr worked, top of while loop",
+                "03/11/2015 15:48:45;0080;   pbs_mom;Svr;preobit_reply;in while loop, no error from job stat",
+                "03/11/2015 15:48:45;0080;   pbs_mom;Job;1086553.tizard1;obit sent to server",
+                "03/11/2015 15:48:45;0080;   pbs_mom;Job;1086553.tizard1;removed job script",
+                "03/11/2015 15:48:46;0001;   pbs_mom;Svr;pbs_mom;LOG_DEBUG::mom_checkpoint_job_has_checkpoint, FALSE",
+                "03/11/2015 15:48:46;0001;   pbs_mom;Job;TMomFinalizeJob3;job 1086567.tizard1 started, pid = 59737",
+                "03/11/2015 15:49:33;0002;   pbs_mom;Svr;pbs_mom;Torque Mom Version = 3.0.4, loglevel = 0"]
+        for i in input:
+            print pretty_print(parser.parse(i))
+    def show_xfs_quota_report(object):
+        parser=QuotaReportParser(exclude_users=["root","nobody","nfsnobody"])
+        input=["User quota on /home/users (/dev/sda)",
+                "                               Blocks                     ",
+                "User ID          Used       Soft       Hard    Warn/Grace     ",
+                "---------- -------------------------------------------------- ",
+                "root            27280          0          0     00 [--------]",
+                "nobody           3404          0          0     00 [--------]",
+                "nfsnobody           0      40960      51200     00 [--------]",
+                "shundezh      2540188   47185920   52428800     00 [--------]",
+                "klara               0   41943040   52428800     00 [--------]",
+                "sian                0   41943040   52428800     00 [--------]",
+                "mhoward            52   47185920   52428800     00 [--------]",
+                "wmenz               0   41943040   52428800     00 [--------]",
+                "asquared            0   41943040   52428800     00 [--------]"]
+        print pretty_print(parser.parse("\n".join(input)))
+
 
 def pretty_print(str):
-    parsed = json.loads(str)
-    return json.dumps(parsed, indent=4, sort_keys=True)
+    #parsed = json.loads(str)
+    return json.dumps(str, indent=4, sort_keys=True)
 
 def print_usage():
     print "Syntax: %s [example_name]" % sys.argv[0]
     print "  example_name is one of %s" % schemas
 
 if __name__ == '__main__':
-    schemas=["pbs.accouting.log","pbs.server.log"]
+    schemas=["pbs.accouting.log","pbs.server.log","pbs.mom.log","xfs.quota.report"]
     if len(sys.argv)<2:
         print_usage()
         sys.exit(1)

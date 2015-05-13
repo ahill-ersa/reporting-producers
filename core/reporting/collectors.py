@@ -120,10 +120,10 @@ class Collector(threading.Thread):
             data=self.__parser.parse(data)
         log.debug("parsed data %s"%data)
         payload={"id": str(uuid.uuid4()), "session": self.__session_id}
+        payload['data']=data
         if 'metadata' in self.__config:
             for m in self.__config['metadata']:
                 payload[m]=self.__config['metadata'][m]
-        payload['data']=data
         log.debug("payload to push: %s"%payload)
         return payload
         

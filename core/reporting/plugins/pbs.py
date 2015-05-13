@@ -10,6 +10,26 @@ import time
 
 log = getLogger(__name__)
 
+class MomLogParser(IParser):
+    def parse(self, data):
+        tokens = [x.lower().strip() for x in data.split(";")]
+        data={}
+        data["timestamp"] = int(time.mktime(time.strptime(tokens[0], "%m/%d/%Y %H:%M:%S")))
+        data["hostname"] = get_hostname()
+    
+        event_type = tokens[3]
+        data['event_type']=event_type
+    
+        if event_type == "svr":
+            data['svr_type']=tokens[4]
+            data['event_description']=tokens[5]
+        elif event_type == "job":
+            data['jobid']=tokens[4]
+            data['event_description']=tokens[5]
+            if data['jobid']=="tmomfinalizejob3":
+                data['jobid']=tokens[5].split(" ")[1]
+        return data
+
 class ServerLogParser(IParser):
     def parse(self, data):
         tokens = [x.lower().strip() for x in data.split(";")]
@@ -111,11 +131,13 @@ class AccountingLogParser(IParser):
                 hosts = {}
                 for slot in kv[1].split("+"):
                     slot = slot.split("/")
-                    slot[1] = int(slot[1])
                     if slot[0] not in hosts:
-                        hosts[slot[0]] = [ slot[1] ]
-                    else:
-                        hosts[slot[0]].append(slot[1])
+                        hosts[slot[0]] = []
+                    if slot[1].isdigit():
+                        hosts[slot[0]].append(int(slot[1]))
+                    elif '-' in slot[1]:
+                        start_end=slot[1].split('-')
+                        hosts[slot[0]].extend(range(int(start_end[0]), int(start_end[1])+1))
                 kv[1] = hosts
             elif kv[0] == "owner":
                 kv[1] = kv[1].split("@")[0]
