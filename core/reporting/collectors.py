@@ -9,8 +9,9 @@ import shlex
 import uuid
 import json
 import collections
+import requests
 
-from reporting.parsers import MatchParser, SplitParser, DummyParser
+from reporting.parsers import MatchParser, SplitParser, DummyParser, JsonGrepParser
 from reporting.utilities import getLogger, get_hostname
 from reporting.exceptions import PluginInitialisationError
 
@@ -36,6 +37,23 @@ class FileReader(IDataSource):
         with open(self.__path) as f:
             content = ''.join(f.readlines()).strip()
         return content
+    
+class HTTPReader(IDataSource):
+    def __init__(self, url, headers={}, method='GET', verify=False):
+        self.__url=url
+        self.__headers=headers
+        self.__method=method
+        self.__verify=verify
+    def get_data(self, **kwargs):
+        log.debug("accessing URL %s"%self.__url)
+        #log.debug("headers %s"%self.__headers)
+        response = requests.get(self.__url, headers=self.__headers, verify=self.__verify)
+        log.debug('response.text %s' % response.text)
+        if response.status_code == 200:
+            return response.text
+        else:
+            log.exception("Error accessing URL %s: %d"%(self.__url, response.status_code))
+            response.raise_for_status()
 
 class Collector(threading.Thread):
     def __init__(self, collector_name, config, output, tailer):
@@ -50,6 +68,14 @@ class Collector(threading.Thread):
             self.__input=CommandRunner(self.__config['input']['source'])
         elif self.__config['input']['type']=='file':
             self.__input=FileReader(self.__config['input']['path'])
+        elif self.__config['input']['type']=='http':
+            #log.debug('input %s'%self.__config['input'])
+            url=self.__config['input']['url']
+            headers=self.__config['input'].get('headers', {})
+            #log.debug('headers %s'%headers)
+            method=self.__config['input'].get('method', 'GET')
+            verify=self.__config['input'].get('verify', False)
+            self.__input=HTTPReader(url, headers, method, verify)
         elif self.__config['input']['type']=='class':
             arguments={}
             if 'arguments' in self.__config['input']:
@@ -64,6 +90,11 @@ class Collector(threading.Thread):
                 self.__parser=SplitParser(self.__config['parser']['delimiter'].strip(), self.__config['parser']['transform'].strip())
             elif self.__config['parser']['type']=='dummy':
                 self.__parser=DummyParser()
+            elif self.__config['parser']['type']=='json':
+                arguments={}
+                if 'arguments' in self.__config['parser']:
+                    arguments=self.__config['parser']['arguments']
+                self.__parser=JsonGrepParser(**arguments)
             elif self.__config['parser']['type']=='class':
                 arguments={}
                 if 'arguments' in self.__config['parser']:

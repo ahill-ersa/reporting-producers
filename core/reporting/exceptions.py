@@ -9,3 +9,6 @@ class RemoteServerError(BaseException):
 
 class MessageInvalidError(BaseException):
     pass
+
+class InputDataError(BaseException):
+    pass

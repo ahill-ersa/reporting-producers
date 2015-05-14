@@ -9,16 +9,17 @@ import requests
 def main(host, tenant, username, password):
     username = base64.b64encode(username)
     password = hashlib.md5(password).hexdigest()
-
+    print password
     headers = {
         "Authorization" : "HCP %s:%s" % (username, password),
         "Accept" : "application/json"
     }
 
     url = "https://%s:9090/mapi/tenants/%s/chargebackReport" % (host, tenant)
-
+    print url
+    print headers
     response = requests.get(url, headers=headers, verify=False)
-
+    print response.text
     if response.status_code == 200:
         data = {}
         data["id"] = str(uuid.uuid4())

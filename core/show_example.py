@@ -5,6 +5,7 @@
 from reporting.plugins.pbs import AccountingLogParser, ServerLogParser, MomLogParser
 from reporting.plugins.xfs import QuotaReportParser
 from reporting.plugins.nfs import MountstatsParser
+from reporting.parsers import JsonGrepParser
 import json
 import sys
 
@@ -154,7 +155,15 @@ device emunfs.cloud.ersa.edu.au:/home/users/ mounted on /home/users with fstype 
     LAYOUTCOMMIT: 0 0 0 0 0 0 0 0
 """
         print pretty_print(parser.parse(input))
-
+    def show_hcp_chargeback(object):
+        parser=JsonGrepParser(pattern="chargebackData", list_name="hcp-chargeback")
+        input= \
+"""
+{"chargebackData":[{"systemName":"hcp1.s3.ersa.edu.au","valid":false,"bytesOut":286733200362,"deletes":689,"bytesIn":408536396027,"reads":1315,"writes":1707,"namespaceName":"modc08","tenantName":"dev","storageCapacityUsed":8381468672,"ingestedVolume":8380552280,"startTime":"2014-12-04T13:03:34+1030","endTime":"2015-05-13T17:06:51+0930","deleted":"false","objectCount":480},{"systemName":"hcp1.s3.ersa.edu.au","valid":false,"bytesOut":240726068,"deletes":49,"bytesIn":233496746,"reads":3197,"writes":159,"namespaceName":"unisatest","tenantName":"dev","storageCapacityUsed":258048,"ingestedVolume":227573,"startTime":"2015-04-17T12:53:51+0930","endTime":"2015-05-13T17:06:51+0930","deleted":"false","objectCount":11},{"systemName":"hcp1.s3.ersa.edu.au","valid":false,"bytesOut":286973926430,"deletes":738,"bytesIn":408769892773,"reads":4512,"writes":1866,"tenantName":"dev","storageCapacityUsed":8381726720,"ingestedVolume":8380779853,"startTime":"2014-12-04T12:13:08+1030","endTime":"2015-05-13T17:06:51+0930","deleted":"false","objectCount":491}]}
+"""    
+#["chargebackData1","chargebackData2"]
+#[{"chargebackData": 1}, {"chargebackData": 2}]
+        print pretty_print(parser.parse(input))
 def pretty_print(str):
     #parsed = json.loads(str)
     return json.dumps(str, indent=4, sort_keys=True)
@@ -164,7 +173,7 @@ def print_usage():
     print "  example_name is one of %s" % schemas
 
 if __name__ == '__main__':
-    schemas=["pbs.accouting.log","pbs.server.log","pbs.mom.log","xfs.quota.report","nfs.mountstats"]
+    schemas=["pbs.accouting.log","pbs.server.log","pbs.mom.log","xfs.quota.report","nfs.mountstats","hcp.chargeback"]
     if len(sys.argv)<2:
         print_usage()
         sys.exit(1)
