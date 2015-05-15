@@ -121,8 +121,8 @@ def usage():
     print "    -f                   start in foreground"
     print "    -k                   kill a background instance"
     print "    -v                   verbose level: -v, warning; -vv, info; -vvv, debug. It will be overwritten by the setting in config file."
-    print "    -p <FILE>            pidfile path"
-    print "    -c <FILE>            configuration file path"
+    print "    -p <FILE>            pidfile path. default: /tmp/daemon-producer.pid"
+    print "    -c <FILE>            configuration file path. default: config.yaml"
     print "    -h, --help           display this help message"
     print "    -V, --version        print the version"
     
