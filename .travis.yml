@@ -6,4 +6,4 @@ python:
   - "3.4"
   - "pypy"
 script:
-  - python -m unittest discover -s tests -v
+  - cd core && python -m unittest discover -s tests -v
