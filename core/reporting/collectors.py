@@ -9,7 +9,7 @@ import shlex
 import uuid
 import json
 import collections
-import requests
+import urllib2, urllib
 
 from reporting.parsers import MatchParser, SplitParser, DummyParser, JsonGrepParser
 from reporting.utilities import getLogger, get_hostname
@@ -39,21 +39,36 @@ class FileReader(IDataSource):
         return content
     
 class HTTPReader(IDataSource):
-    def __init__(self, url, headers={}, method='GET', verify=False):
+    def __init__(self, url, headers={}, auth=None):
         self.__url=url
         self.__headers=headers
-        self.__method=method
-        self.__verify=verify
+        self.__auth=auth
     def get_data(self, **kwargs):
-        log.debug("accessing URL %s"%self.__url)
-        #log.debug("headers %s"%self.__headers)
-        response = requests.get(self.__url, headers=self.__headers, verify=self.__verify)
-        log.debug('response.text %s' % response.text)
-        if response.status_code == 200:
-            return response.text
+        try:
+            if self.__auth:
+                password_manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
+                password_manager.add_password(None, self.__url, self.__auth['username'], self.__auth['password'])
+                
+                auth = urllib2.HTTPBasicAuthHandler(password_manager) # create an authentication handler
+                opener = urllib2.build_opener(auth) # create an opener with the authentication handler
+                urllib2.install_opener(opener) # install the opener... 
+            
+            req = urllib2.Request(self.__url, None, self.__headers)
+            handler = urllib2.urlopen(req)
+        except urllib2.HTTPError as e:
+            log.error('response code %d' % e.code)
+            if e.code == 400 or e.code==500:
+                raise MessageInvalidError()
+            else:
+                raise RemoteServerError()
+        except urllib2.URLError as e:
+            raise Exception("Error accessing URL %s: [%d] %s" % (self.__url, e.code, e))
         else:
-            log.exception("Error accessing URL %s: %d"%(self.__url, response.status_code))
-            response.raise_for_status()
+            # 200
+            response = handler.read()
+            log.debug("response %d %s"% (handler.code, response))
+            handler.close()
+            return response
 
 class Collector(threading.Thread):
     def __init__(self, collector_name, config, output, tailer):
@@ -73,9 +88,8 @@ class Collector(threading.Thread):
             url=self.__config['input']['url']
             headers=self.__config['input'].get('headers', {})
             #log.debug('headers %s'%headers)
-            method=self.__config['input'].get('method', 'GET')
-            verify=self.__config['input'].get('verify', False)
-            self.__input=HTTPReader(url, headers, method, verify)
+            auth=self.__config['input'].get('auth', None)
+            self.__input=HTTPReader(url, headers, auth)
         elif self.__config['input']['type']=='class':
             arguments={}
             if 'arguments' in self.__config['input']:

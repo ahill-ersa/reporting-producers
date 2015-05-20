@@ -12,6 +12,7 @@ import time
 import traceback
 import uuid
 import threading
+import urllib2, urllib
 
 import requests
 from requests.exceptions import ConnectionError, Timeout
@@ -42,7 +43,7 @@ class KafkaHTTPOutput(IOutput):
         self.attempts = config.get("attempts", 3)
         self.verify = config.get("verify", True)
 
-    def push(self, data):
+    def push1(self, data):
         if not isinstance(data, list):
             data = [data]
         payload = json.dumps(data)
@@ -60,6 +61,34 @@ class KafkaHTTPOutput(IOutput):
             raise RemoteServerError()
         else:
             raise Exception("HTTP error: %i %s" % (response.status_code, response.text))
+
+    def push(self, data):
+        if not isinstance(data, list):
+            data = [data]
+        payload = json.dumps(data)
+        log.debug("push data to http: %s" % payload[:1024])
+        try:
+            password_manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
+            password_manager.add_password(None, self.url, self.auth[0], self.auth[1])
+            
+            auth = urllib2.HTTPBasicAuthHandler(password_manager) # create an authentication handler
+            opener = urllib2.build_opener(auth) # create an opener with the authentication handler
+            urllib2.install_opener(opener) # install the opener... 
+            req = urllib2.Request(self.url, payload, self.headers)
+            handler = urllib2.urlopen(req)
+        except urllib2.HTTPError as e:
+            log.error('response code %d' % e.code)
+            if e.code == 400 or e.code==500:
+                raise MessageInvalidError()
+            else:
+                raise RemoteServerError()
+        except urllib2.URLError as e:
+            raise Exception("HTTP error: %i %s" % (e.code, e))
+        else:
+            # 200
+            response = handler.read()
+            log.debug("response %d %s"% (handler.code, response))
+            handler.close()
 
 class FileOutput(IOutput):
     def __init__(self, config):
