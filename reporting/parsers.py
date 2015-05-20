@@ -62,7 +62,7 @@ class JsonGrepParser(IParser):
         output['hostname'] = get_hostname()
         try:
             j = json.loads(data)
-        except ValueError, e:
+        except ValueError as e:
             log.exception('Could not load JSON object from input data.')
             raise InputDataError()
     

@@ -69,7 +69,7 @@ class Tailer(IDataSource):
         need_to_update=False
         try:
             current_st=os.stat(current_file)
-        except EnvironmentError, err:
+        except EnvironmentError as err:
             if err.errno == errno.ENOENT:
                 log.info('file %s removed' % current_file)
                 tracker['file_handle'].close()

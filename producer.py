@@ -42,7 +42,7 @@ class ProducerDaemon(Daemon):
         if self.__pusher_pid>-1:
             try:
                 os.kill(self.__pusher_pid, signal.SIGTERM)
-            except OSError, err:
+            except OSError as err:
                 err = str(err)
                 if err.find("No such process") > 0:
                     log.info("Pusher process has gone.")

@@ -178,11 +178,11 @@ def init_object(class_name, **arguments):
     log.debug("Loading plugin %s %s"%(mod_name, class_name))
     try:
         mod = __import__(mod_name, globals(), locals(), [class_name])
-    except SyntaxError, e:
+    except SyntaxError as e:
         raise PluginInitialisationError(
             "Plugin %s (%s) contains a syntax error at line %s" %
             (class_name, e.filename, e.lineno))
-    except ImportError, e:
+    except ImportError as e:
         log.exception(e)
         raise PluginInitialisationError(
             "Failed to import plugin %s: %s" %
