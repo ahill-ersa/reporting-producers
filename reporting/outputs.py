@@ -14,8 +14,6 @@ import uuid
 import threading
 import urllib2, urllib
 
-import requests
-from requests.exceptions import ConnectionError, Timeout
 from reporting.exceptions import MessageInvalidError, NetworkConnectionError, RemoteServerError
 from reporting.utilities import getLogger
 
@@ -42,25 +40,6 @@ class KafkaHTTPOutput(IOutput):
         self.auth = (config["username"], config["token"])
         self.attempts = config.get("attempts", 3)
         self.verify = config.get("verify", True)
-
-    def push1(self, data):
-        if not isinstance(data, list):
-            data = [data]
-        payload = json.dumps(data)
-        log.debug("push data to http: %s" % payload[:1024])
-        try:
-            response = requests.post(self.url, headers=self.headers, auth=self.auth, data=payload, verify=self.verify)
-        except ConnectionError, Timeout:
-            raise NetworkConnectionError()
-        log.debug("response %s"%response)
-        if response.status_code == 204:
-            return
-        elif response.status_code == 400:
-            raise MessageInvalidError()
-        elif response.status_code == 500:
-            raise RemoteServerError()
-        else:
-            raise Exception("HTTP error: %i %s" % (response.status_code, response.text))
 
     def push(self, data):
         if not isinstance(data, list):

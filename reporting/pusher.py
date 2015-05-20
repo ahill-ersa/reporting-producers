@@ -15,7 +15,6 @@ import multiprocessing
 import datetime
 import signal
 
-import requests
 import yaml
 from reporting.utilities import getLogger, excepthook
 from reporting.exceptions import MessageInvalidError, NetworkConnectionError, RemoteServerError
