@@ -1,0 +1,102 @@
+#!/bin/bash
+#
+# chkconfig: - 92 08
+# processname: reporting-producer
+# config: /etc/reporting-producer/config.yaml
+# pidfile: /var/run/reporting-producer/reporting-producer.pid
+# description: reporting producer is a daemon to collect data and send to the server
+#
+### BEGIN INIT INFO
+# Provides: reporting-producer
+# Required-Start: $local_fs $remote_fs
+# Required-Stop: $local_fs $remote_fs
+# Should-Start: $time $network $syslog iptables firehol shorewall ferm
+# Should-Stop: $network $syslog iptables firehol shorewall ferm
+# Default-Start: 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Start/Stop reporting-producer
+# Description: Start/Stop reporting-producer, a daemon to collect data and send to the server
+### END INIT INFO
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+CONFIG_FILE="/etc/reporting-producer/config.yaml"
+PRODUCER_LOCATION="/opt/producers"
+prog="producer.py"
+MAINPROG="$PRODUCER_LOCATION/$prog"
+lockfile=${LOCKFILE-/var/lock/subsys/reporting-producer}
+pidfile=${PIDFILE-/var/run/reporting-producer/reporting-producer.pid}
+RUN_AS="producer"
+RETVAL=0
+
+# Check that the config file exists
+[ -f $CONFIG_FILE ] || exit 0
+
+ensure_dir() {
+    if [ ! -d $1 ]; then
+        mkdir -p $1
+        chown -R $2 $1
+        chmod 755 $1
+    fi
+}
+
+start() {
+    ensure_dir /var/run/reporting-producer $RUN_AS
+    ensure_dir /var/lib/reporting-producer $RUN_AS
+    ensure_dir /var/log/reporting-producer $RUN_AS
+    echo -n $"Starting reporting producer: "
+    sudo -u $RUN_AS ${MAINPROG} -c $CONFIG_FILE -p $pidfile -b > /dev/null
+    RETVAL=$?
+    if [ $RETVAL = 0 ]; then
+        touch ${lockfile}
+        echo_success
+    else
+        echo_failure
+    fi
+    echo
+    return $RETVAL
+}
+
+stop() {
+    echo -n $"Stopping reporting producer: "
+    sudo -u $RUN_AS ${MAINPROG} -c $CONFIG_FILE -p $pidfile -k > /dev/null
+    RETVAL=$?
+    if [ $RETVAL = 0 ]; then
+        rm -f ${lockfile} ${pidfile}
+        echo_success
+    else
+        echo_failure
+    fi
+    echo
+    return $RETVAL
+}
+
+# See how we were called.
+case "$1" in
+    start)
+        status -p ${pidfile} ${prog} >/dev/null 2>&1 && exit 0
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    status)
+        status -p ${pidfile} ${prog}
+        RETVAL=$?
+        if [ $RETVAL -ne 0 ]; then
+            if [ -f $pidfile ]; then
+                echo $"$prog has exited unexpectedly."
+	    fi
+        fi
+        ;;
+    *)
+        echo $"Usage: reporting-producer {start|stop|restart|status}"
+        RETVAL=2
+esac
+
+exit $RETVAL

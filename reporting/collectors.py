@@ -62,7 +62,7 @@ class HTTPReader(IDataSource):
             else:
                 raise RemoteServerError()
         except urllib2.URLError as e:
-            raise Exception("Error accessing URL %s: [%d] %s" % (self.__url, e.code, e))
+            raise Exception("Error accessing URL %s: %s" % (self.__url, e.args))
         else:
             # 200
             response = handler.read()

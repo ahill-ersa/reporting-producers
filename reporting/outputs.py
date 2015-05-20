@@ -62,7 +62,7 @@ class KafkaHTTPOutput(IOutput):
             else:
                 raise RemoteServerError()
         except urllib2.URLError as e:
-            raise Exception("HTTP error: %i %s" % (e.code, e))
+            raise Exception("HTTP error: %s" % e.args)
         else:
             # 200
             response = handler.read()
