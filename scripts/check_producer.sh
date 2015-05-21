@@ -79,7 +79,7 @@ CONFIG_FILE="/etc/reporting-producer/config.yaml"
 prog="producer.py"
 
 has_pusher=0
-if grep -q 'pusher:' $CONFIG_FILE; then
+if grep -q '^pusher:' $CONFIG_FILE; then
     has_pusher=1
 fi
 
@@ -100,16 +100,21 @@ eval $(parse_yaml $CONFIG_FILE)
 buffer_dir=$output__buffer__directory
 buffer_size=$output__buffer__size
 
-dir_usage=$(du -sm $buffer_dir|cut -f1)
-percentage=$(($dir_usage * 1024 * 100 / $buffer_size))
+if [ ! -z "$buffer_dir" ] && [ ! -z "$buffer_size" ]; then
+    dir_usage=$(du -sm $buffer_dir|cut -f1)
+    percentage=$(($dir_usage * 1024 * 100 / $buffer_size))
 
-if [ $percentage -gt $thresh_warn ]; then
-    echo "Producer WARNING: cache size reached $thresh_warn%"
-    exit $STATE_WARNING
-elif [ $percentage -gt $thresh_crit ]; then
-    echo "Producer CRITICAL: cache size reached $thresh_crit%"
-    exit $STATE_CRITICAL
+    if [ $percentage -gt $thresh_warn ]; then
+        echo "Producer WARNING: cache size reached $thresh_warn%"
+        exit $STATE_WARNING
+    elif [ $percentage -gt $thresh_crit ]; then
+        echo "Producer CRITICAL: cache size reached $thresh_crit%"
+        exit $STATE_CRITICAL
+    fi
+
+    echo "Producer OK: buffer usage is $percentage%"
+    exit $STATE_OK
 fi
 
-echo "Producer OK: buffer usage is $percentage%"
-exit $STATE_OK
+echo "Producer WARNING: config file may be changed after producer is started"
+exit $STATE_WARNING
