@@ -39,7 +39,6 @@ class KafkaHTTPOutput(IOutput):
         self.url = config["url"]
         self.auth = (config["username"], config["token"])
         self.attempts = config.get("attempts", 3)
-        self.verify = config.get("verify", True)
 
     def push(self, data):
         if not isinstance(data, list):

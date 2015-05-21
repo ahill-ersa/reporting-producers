@@ -224,7 +224,6 @@ output:
         url: https://collector.dyn.ersa.edu.au/v1/topic/emu
         username: test
         token: test
-        verify: False
     # local cache that holds data temporarily before pushing to server
     buffer:
         directory: /mnt/producer/cache
