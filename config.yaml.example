@@ -1,0 +1,245 @@
+global:
+    # you can overwrite the hostname here
+    hostname: alias.host.name
+
+collector:
+    cpu:
+        input:
+            type: file
+            path: "/proc/stat"
+            frequency: 10
+        parser:
+            type: class
+            name: reporting.plugins.linux.CPUParser
+        output: buffer
+        metadata:
+            schema: linux.cpu
+            version: 1
+    memory:
+        input:
+            type: file
+            path: "/proc/meminfo"
+            frequency: 10
+        parser:
+            type: class
+            name: reporting.plugins.linux.MemParser
+        output: buffer
+        metadata:
+            schema: linux.memory
+            version: 1
+    netdev:
+        input:
+            type: file
+            path: "/proc/net/dev"
+            frequency: 10
+        parser:
+            type: class
+            name: reporting.plugins.linux.NetDevParser
+            arguments:
+                include_devices:
+                    - eth*
+                    - bond0
+        output: buffer
+        metadata:
+            schema: linux.netdev
+            version: 1
+    load:
+        input:
+            type: file
+            path: "/proc/loadavg"
+            frequency: 10
+        parser:
+            type: split
+            delimiter: |
+                       \s
+            transform: |
+                       {{"1m":{0}, "5m":{1}, "15m":{2}}}
+        output: buffer
+        metadata:
+            schema: linux.load
+            version: 1
+    df:
+        input:
+            type: command
+            source: "/bin/df -Pk"
+            frequency: 60
+        parser:
+            type: class
+            name: reporting.plugins.linux.DfParser
+            arguments:
+                exclude_devices:
+                    - tmpfs
+                    - udev
+                    - none
+        output: buffer
+        metadata:
+            schema: linux.df
+            version: 1
+    xfs_quota_report:
+        input:
+            type: command
+            source: "/usr/sbin/xfs_quota -x -c 'report -u'"
+            frequency: 600
+        parser:
+            type: class
+            name: reporting.plugins.xfs.QuotaReportParser
+            arguments:
+                exclude_users:
+                    - root
+                    - bin
+                    - daemon
+                    - games
+                    - gdm
+                    - rpcuser
+                    - nagios
+                    - apache
+                    - nobody
+                    - nfsnobody
+        output: buffer
+        metadata:
+            schema: xfs.quota.report
+            version: 1
+    pbs_server_log:
+        input:
+            type: tailer
+            path: /var/spool/torque/server_logs/*
+            collect_history_data: False
+            frequency: 1
+        parser:
+            type: class
+            name: reporting.plugins.pbs.ServerLogParser
+        output: kafka-http
+        metadata:
+            schema: pbs.server.log
+            version: 1
+    pbs_accounting_log:
+        input:
+            type: tailer
+            path: /var/spool/torque/server_priv/accounting/*
+            collect_history_data: True
+            frequency: 1
+        parser:
+            type: class
+            name: reporting.plugins.pbs.AccountingLogParser
+        output: kafka-http
+        metadata:
+            schema: pbs.accounting.log
+            version: 1
+    pbs_mom_log:
+        input:
+            type: tailer
+            path: /var/spool/torque/mom_logs/*
+            collect_history_data: False
+            frequency: 1
+        parser:
+            type: class
+            name: reporting.plugins.pbs.MomLogParser
+        output: kafka-http
+        metadata:
+            schema: pbs.server.log
+            version: 1
+    mountstats:
+        input:
+            type: file
+            path: "/proc/self/mountstats"
+            frequency: 10
+        parser:
+            type: class
+            name: reporting.plugins.nfs.MountstatsParser
+            arguments:
+                fstype:
+                    - nfs
+                    - nfs4
+        output: buffer
+        metadata:
+            schema: nfs.mountstats
+            version: 1
+    hcp.chargeback:
+        input:
+            type: http
+            url: https://tenant1.hcp1.s3.ersa.edu.au:9090/mapi/tenants/tenant1/chargebackReport
+            headers:
+                Authorization: "HCP user:token"
+                Accept: "application/json"
+            frequency: 10
+        parser:
+            type: json
+            arguments:
+                pattern: "chargebackData"
+                list_name: "hcp-chargeback"
+        output: buffer
+        metadata:
+            schema: hcp.chargeback
+            version: 1
+    zfs.kstat:
+        input:
+            type: class
+            name: reporting.plugins.zfs.KstatInput
+            frequency: 5
+        output: buffer
+        metadata:
+            schema: zfs.kstat
+            version: 1
+    zfs.iostat:
+        input:
+            type: command
+            source: "/sbin/zpool iostat"
+            frequency: 5
+        parser:
+            type: class
+            name: reporting.plugins.zfs.IostatParser
+        output: buffer
+        metadata:
+            schema: zfs.iostat
+            version: 1
+    zfs.list:
+        input:
+            type: command
+            source: "/sbin/zfs list -o name,avail,used,ratio"
+            frequency: 5
+        parser:
+            type: class
+            name: reporting.plugins.zfs.ListParser
+        output: buffer
+        metadata:
+            schema: zfs.list
+            version: 1
+    libvirt:
+        input:
+            type: class
+            name: reporting.plugins.kvm.LibvirtInput
+            frequency: 5
+        output: buffer
+        metadata:
+            schema: libvirt
+            version: 1
+
+tailer:
+    db_path: /mnt/producer/tailer.db
+    max_line_number: 300
+
+output:
+    # Reporting API server (kafka's http front end)
+    kafka-http:
+        url: https://collector.dyn.ersa.edu.au/v1/topic/emu
+        username: test
+        token: test
+    # local cache that holds data temporarily before pushing to server
+    buffer:
+        directory: /mnt/producer/cache
+        size: 4096000
+    # file output for testing (everything message will be saved into this file)
+    file:
+        path: /mnt/producer/out
+
+# a pusher to push data in local cache
+pusher:
+    # Local staging directory
+    directory: /tmp/producer-cache
+    output: kafka-http
+
+logging:
+    log_level: 3
+    log_location: /tmp/producer.log
+    log_format: "%(asctime)s - %(levelname)s - %(processName)s - %(threadName)s - %(message)s"
+    log_max_size: 2097152
