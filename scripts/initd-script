@@ -28,6 +28,11 @@ MAINPROG="$PRODUCER_LOCATION/$prog"
 lockfile=${LOCKFILE-/var/lock/subsys/reporting-producer}
 pidfile=${PIDFILE-/var/run/reporting-producer/reporting-producer.pid}
 RUN_AS="producer"
+
+if [ -f /etc/default/reporting-producer ]; then
+    . /etc/default/reporting-producer
+fi
+
 RETVAL=0
 
 # Check that the config file exists
