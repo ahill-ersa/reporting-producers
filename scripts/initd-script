@@ -22,7 +22,6 @@ CONFIG_FILE="/etc/reporting-producer/config.yaml"
 PRODUCER_LOCATION="/opt/producers"
 prog="reporting-producer"
 exec_name="producer.py"
-MAINPROG="$PRODUCER_LOCATION/$exec_name"
 pidfile=${PIDFILE-/var/run/reporting-producer/reporting-producer.pid}
 RUN_AS="producer"
 
@@ -77,6 +76,7 @@ if [ "$system" = "debian" ]; then
     }
 fi
 
+MAINPROG="$PRODUCER_LOCATION/$exec_name"
 RETVAL=0
 
 # Check that the config file exists
@@ -164,7 +164,6 @@ status() {
 # See how we were called.
 case "$1" in
     start)
-        status -p ${pidfile} ${exec_name} >/dev/null 2>&1 && exit 0
         start
         ;;
     stop)
@@ -172,16 +171,11 @@ case "$1" in
         ;;
     restart)
         stop
+        sleep 1
         start
         ;;
     status)
-        status -p ${pidfile} ${exec_name}
-        RETVAL=$?
-        if [ $RETVAL -ne 0 ]; then
-            if [ -f $pidfile ]; then
-                echo $"$prog has exited unexpectedly."
-	    fi
-        fi
+        status
         ;;
     *)
         echo $"Usage: reporting-producer {start|stop|restart|status}"
