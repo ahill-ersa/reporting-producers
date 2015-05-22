@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/eResearchSA/reporting-producers.svg?branch=master)](https://travis-ci.org/eResearchSA/reporting-producers)
+
 # reporting-producers
 Reporting Producers - collecting data on anything and everything for eRSA reporting purposes.
 
