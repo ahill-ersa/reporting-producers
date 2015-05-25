@@ -56,7 +56,7 @@ class KafkaHTTPOutput(IOutput):
             #opener = urllib2.build_opener(auth) # create an opener with the authentication handler
             #urllib2.install_opener(opener) # install the opener... 
             req = urllib2.Request(self.url, payload, self.headers)
-            handler = urllib2.urlopen(req, timeout=10)
+            handler = urllib2.urlopen(req)
         except urllib2.HTTPError as e:
             log.error('response code %d' % e.code)
             if e.code == 400 or e.code==500:
