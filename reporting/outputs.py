@@ -13,6 +13,7 @@ import traceback
 import uuid
 import threading
 import urllib2, urllib
+import base64
 
 from reporting.exceptions import MessageInvalidError, NetworkConnectionError, RemoteServerError
 from reporting.utilities import getLogger
@@ -45,15 +46,17 @@ class KafkaHTTPOutput(IOutput):
             data = [data]
         payload = json.dumps(data)
         log.debug("push data to http: %s" % payload[:1024])
+        base64string = base64.encodestring('%s:%s' % (self.auth[0], self.auth[1])).replace('\n', '')
+        self.headers['Authorization'] = "Basic %s" % base64string
         try:
-            password_manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
-            password_manager.add_password(None, self.url, self.auth[0], self.auth[1])
+            #password_manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
+            #password_manager.add_password(None, self.url, self.auth[0], self.auth[1])
             
-            auth = urllib2.HTTPBasicAuthHandler(password_manager) # create an authentication handler
-            opener = urllib2.build_opener(auth) # create an opener with the authentication handler
-            urllib2.install_opener(opener) # install the opener... 
+            #auth = urllib2.HTTPBasicAuthHandler(password_manager) # create an authentication handler
+            #opener = urllib2.build_opener(auth) # create an opener with the authentication handler
+            #urllib2.install_opener(opener) # install the opener... 
             req = urllib2.Request(self.url, payload, self.headers)
-            handler = urllib2.urlopen(req)
+            handler = urllib2.urlopen(req, timeout=10)
         except urllib2.HTTPError as e:
             log.error('response code %d' % e.code)
             if e.code == 400 or e.code==500:
