@@ -12,3 +12,9 @@ class MessageInvalidError(BaseException):
 
 class InputDataError(BaseException):
     pass
+
+##
+# AsyncServerException is used to wrap communication exceptions.
+
+class AsyncServerException(Exception):
+    pass

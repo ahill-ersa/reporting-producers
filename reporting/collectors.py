@@ -124,6 +124,11 @@ class Collector(threading.Thread):
     def quit(self):
         self.__running=False
         
+    def info(self):
+        col_info={"name":self.__collector_name, "config":self.__config, "sleep_time": self.__sleep_time}
+        col_info["session_id"]=self.__session_id
+        return col_info
+        
     def run(self):
         count=0
         error_count=0

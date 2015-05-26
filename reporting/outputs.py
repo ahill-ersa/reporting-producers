@@ -160,6 +160,6 @@ class BufferOutput(IOutput):
                 self.log_space_warning=True
                 
     def cleanup(self):
-        log.debug("write all data to cache before exit...")
+        log.info("write all data to cache before exit...")
         while len(self.queue)>0:
             self.execute()
