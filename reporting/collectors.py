@@ -26,8 +26,11 @@ class CommandRunner(IDataSource):
         self.__cmd=cmd
     def get_data(self, **kwargs):
         log.debug("running cmd %s"%self.__cmd)
-        pipe = Popen(shlex.split(self.__cmd), stdout=PIPE).stdout
-        return ''.join(pipe.readlines()).strip()
+        process = Popen(shlex.split(self.__cmd), stdout=PIPE)
+        pipe = process.stdout
+        output = ''.join(pipe.readlines()).strip()
+        process.wait()
+        return output
     
 class FileReader(IDataSource):
     def __init__(self, path):
