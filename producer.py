@@ -15,7 +15,7 @@ from getopt import GetoptError
 from daemon import Daemon
 from reporting.utilities import getLogger, excepthook, get_log_level, set_global
 from reporting.__version__ import version
-from reporting.outputs import KafkaHTTPOutput, BufferOutput, FileOutput
+from reporting.outputs import KafkaHTTPOutput, BufferOutput, FileOutput, BufferThread
 from reporting.pusher import Pusher
 from reporting.collectors import Collector
 from reporting.tailer import Tailer
@@ -34,6 +34,7 @@ class ProducerDaemon(Daemon):
         self.__outputs={}
         self.__pusher_pid=-1
         self.__tailer=None
+        self.__buffer_thread=None
         self.__collectors=[]
         self.__asyncServer = AsyncServer(self)
         
@@ -45,6 +46,8 @@ class ProducerDaemon(Daemon):
         self.__asyncServer.stop()
         for c in self.__collectors:
             c.quit()
+        if self.__buffer_thread is not None:
+            self.__buffer_thread.quit()
         if self.__pusher_pid>-1:
             try:
                 os.kill(self.__pusher_pid, signal.SIGTERM)
@@ -95,6 +98,8 @@ class ProducerDaemon(Daemon):
             pusher.start()
             self.__pusher_pid=pusher.pid
             log.info("started pusher pid=%d" % pusher.pid)
+        if 'buffer' in self.__outputs:
+            self.__buffer_thread=BufferThread(self.__outputs['buffer'])
         if 'collector' in config:
             for collector_config in config['collector']:
                 log.debug("initiating collector %s"%collector_config)
@@ -103,20 +108,19 @@ class ProducerDaemon(Daemon):
                 self.__collectors.append(c)
         for c in self.__collectors:
             c.start()
+        if self.__buffer_thread is not None:
+            log.info("starting buffer thread")
+            self.__buffer_thread.start()
         # Start the communication
         log.debug("Starting console communication")
         try:
             self.__asyncServer.start(self.__socket_file)
         except AsyncServerException as e:
             log.exception("Could not start socket server: %s", e)
-        if 'buffer' in self.__outputs:
-            while self.__running:
-                self.__outputs['buffer'].execute()
-                time.sleep(1)
-            self.__outputs['buffer'].cleanup()
-            log.info("Buffer output stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
         if 'pusher' in config:
             pusher.join()
+        if self.__buffer_thread is not None and self.__buffer_thread.is_alive():
+            self.__buffer_thread.join()
         for c in self.__collectors:
             if c.is_alive():
                 c.join()

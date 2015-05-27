@@ -140,7 +140,7 @@ class BufferOutput(IOutput):
             with self.write_lock:
                 data = self.queue.pop()
             if len(data) == 0:
-                return
+                return False
             if self.check_dir.is_ok():
                 self.log_space_warning=False
                 log.debug("data to save: %s"%data)
@@ -153,13 +153,34 @@ class BufferOutput(IOutput):
                     os.rename(filename_tmp, filename)
                 except Exception as e:
                     log.error("unexpected error: %s", str(e))
-                    return
+                    return False
             else:
                 if not self.log_space_warning:
                     log.warn("Cache directory %s has reached its capacity.", self.directory)
                 self.log_space_warning=True
+                return False
+            return True
+        return False
                 
     def cleanup(self):
         log.info("write all data to cache before exit...")
         while len(self.queue)>0:
             self.execute()
+            
+class BufferThread(threading.Thread):
+    def __init__(self, buffer):
+        threading.Thread.__init__(self, name="buffer-thread")
+        self.__buffer=buffer
+        self.__running=True
+        
+    def quit(self):
+        self.__running=False
+        
+    def run(self):
+        log.info("Buffer thread has started.")
+        while self.__running:
+            if not self.__buffer.execute():
+                time.sleep(1)
+        self.__buffer.cleanup()
+        log.info("Buffer thread stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                
