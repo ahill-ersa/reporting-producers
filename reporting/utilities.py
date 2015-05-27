@@ -58,3 +58,8 @@ def list_to_dict(d, l, value):
         if l[0] not in d:
             d[l[0]] = {}
         list_to_dict(d[l[0]], l[1:], value)
+
+def formatExceptionInfo():
+    """ Consistently format exception information """
+    cla, exc = sys.exc_info()[:2]
+    return (cla.__name__, str(exc))

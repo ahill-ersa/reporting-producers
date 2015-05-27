@@ -81,5 +81,7 @@ class Pusher(multiprocessing.Process):
                     self.__back_off=min(self.max_backoff, attempt + random.random() * pow(2, attempt))
                     log.exception("network or remote server error, back off for %d seconds" % self.__back_off)
                     break
+                if not self.__running:
+                    break
             time.sleep(1)
         log.info("Pusher has stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))

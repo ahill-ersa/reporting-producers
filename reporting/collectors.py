@@ -26,8 +26,11 @@ class CommandRunner(IDataSource):
         self.__cmd=cmd
     def get_data(self, **kwargs):
         log.debug("running cmd %s"%self.__cmd)
-        pipe = Popen(shlex.split(self.__cmd), stdout=PIPE).stdout
-        return ''.join(pipe.readlines()).strip()
+        process = Popen(shlex.split(self.__cmd), stdout=PIPE)
+        pipe = process.stdout
+        output = ''.join(pipe.readlines()).strip()
+        process.wait()
+        return output
     
 class FileReader(IDataSource):
     def __init__(self, path):
@@ -117,9 +120,27 @@ class Collector(threading.Thread):
         self.__running=True
         self.__session_id=str(uuid.uuid4())
         self.__max_error_count=5
+        self.__current_data=None
+        self.__number_collected=0
+        self.__number_failed=0
+        self.__sleep_count=0
+        self.__error_count=0
         
     def quit(self):
         self.__running=False
+        
+    def info(self):
+        col_info={"name":self.__collector_name, "config":self.__config, "sleep_time": self.__sleep_time}
+        col_info["session_id"]=self.__session_id
+        col_info["is_running"]=self.__running
+        col_info["current_data"]=self.__current_data
+        col_info["number_collected"]=self.__number_collected
+        col_info["number_failed"]=self.__number_failed
+        col_info["sleep_count"]=self.__sleep_count
+        col_info["error_count"]=self.__error_count
+        if self.__config['input']['type']=='tailer':
+            col_info["tailer"]=self.__input.info(self.__config['input']['path'])
+        return col_info
         
     def run(self):
         count=0
@@ -129,9 +150,11 @@ class Collector(threading.Thread):
             args={'config': self.__config['input']}
             if count==self.__sleep_time:
                 count=0
+                data=None
                 try:
                     data=self.__input.get_data(**args)
                     if isinstance(data, collections.deque) or isinstance(data, list):
+                        self.__current_data=[l for l in data]
                         payload=[]
                         for line in data:
                             log.debug("raw data %s"%line)
@@ -141,22 +164,29 @@ class Collector(threading.Thread):
                         else:
                             continue
                     else:
+                        self.__current_data=data
                         log.debug("raw data %s"%data)
                         payload=self.generate_payload(data)
                         self.__output.push(payload)
                 except:
-                    log.exception('unable to get or parse data.')
+                    self.__current_data=data
+                    log.exception('unable to get or parse data. data: %s'%data)
                     error_count+=1
                     if error_count>=self.__max_error_count:
                         break
+                    self.__number_failed+=1
                     if self.__config['input']['type']=='tailer':
                         self.__input.fail(**args)
                 else:
+                    error_count=0
+                    self.__number_collected+=1
                     if self.__config['input']['type']=='tailer':
                         self.__input.success(**args)
+                self.__error_count==error_count
             else:
                 time.sleep(1)
                 count+=1
+            self.__sleep_count=count
         self.__output.close()
         log.info("collector %s has stopped."%self.__collector_name)
         

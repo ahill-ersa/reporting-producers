@@ -7,6 +7,7 @@ import logging
 import logging.handlers
 import yaml
 import datetime
+import json
 
 import getopt
 from getopt import GetoptError
@@ -18,25 +19,30 @@ from reporting.outputs import KafkaHTTPOutput, BufferOutput, FileOutput
 from reporting.pusher import Pusher
 from reporting.collectors import Collector
 from reporting.tailer import Tailer
+from reporting.admin import AsyncServer
+from reporting.exceptions import AsyncServerException
 from __builtin__ import True
 
 log = getLogger("producer")
 
 class ProducerDaemon(Daemon):
-    def __init__(self, pidfile, config, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
+    def __init__(self, pidfile, socketfile, config, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
         Daemon.__init__(self, pidfile, stdin, stdout, stderr)
         self.__running=True
+        self.__socket_file=socketfile
         self.config=config
         self.__outputs={}
         self.__pusher_pid=-1
         self.__tailer=None
         self.__collectors=[]
+        self.__asyncServer = AsyncServer(self)
         
     def __sigTERMhandler(self, signum, frame):
         log.debug("Caught signal %d. Exiting" % signum)
         self.quit()
         
     def quit(self):
+        self.__asyncServer.stop()
         for c in self.__collectors:
             c.quit()
         if self.__pusher_pid>-1:
@@ -82,7 +88,7 @@ class ProducerDaemon(Daemon):
         signal.signal(signal.SIGINT, self.__sigTERMhandler)
         # Ensure unhandled exceptions are logged
         sys.excepthook = excepthook
-        log.warning("Reporting producer started at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        log.info("Reporting producer started at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
         if 'pusher' in config:
             pusher=Pusher(self.__outputs[config['pusher']['output']], config['pusher']['directory'], config['pusher'].get('batch',1))
             pusher.daemon=True
@@ -97,17 +103,34 @@ class ProducerDaemon(Daemon):
                 self.__collectors.append(c)
         for c in self.__collectors:
             c.start()
+        # Start the communication
+        log.debug("Starting console communication")
+        try:
+            self.__asyncServer.start(self.__socket_file)
+        except AsyncServerException as e:
+            log.exception("Could not start socket server: %s", e)
         if 'buffer' in self.__outputs:
             while self.__running:
                 self.__outputs['buffer'].execute()
                 time.sleep(1)
             self.__outputs['buffer'].cleanup()
+            log.info("Buffer output stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
         if 'pusher' in config:
             pusher.join()
         for c in self.__collectors:
             if c.is_alive():
                 c.join()
-        log.warning("Reporting producer stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        log.info("Reporting producer stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    
+    def console(self, message):
+        if message=="config":
+            return json.dumps({"producer-config":self.config})
+        elif message=="show":
+            return json.dumps({"collectors": [c.info() for c in self.__collectors]})
+        elif message=="help":
+            return "{\"system\": \"Command list: config, show\"}"
+        else:
+            return "{\"system\": \"Unknown command. Please run help to get a list of supported commands.\"}"
             
 def usage():
     """ Prints reporting producer command line options and exits
@@ -122,14 +145,15 @@ def usage():
     print "    -k                   kill a background instance"
     print "    -v                   verbose level: -v, warning; -vv, info; -vvv, debug. It will be overwritten by the setting in config file."
     print "    -p <FILE>            pidfile path. default: /tmp/daemon-producer.pid"
+    print "    -s <FILE>            socket file path. default: /tmp/producer.sock"
     print "    -c <FILE>            configuration file path. default: config.yaml"
     print "    -h, --help           display this help message"
     print "    -V, --version        print the version"
     
 if __name__ == "__main__":
     try:
-        (opts, getopts) = getopt.getopt(sys.argv[1:], 'bfvp:c:khV',
-                                        ["background", "foreground", "verbose", "pid=",
+        (opts, getopts) = getopt.getopt(sys.argv[1:], 'bfvp:s:c:khV',
+                                        ["background", "foreground", "verbose", "pid=", "sock=",
                                          "config=", "kill", "help", "version"])
     except GetoptError:
         print "\nInvalid command line option detected."
@@ -139,6 +163,7 @@ if __name__ == "__main__":
     verbose=0
     killing=False
     pid_file="/tmp/daemon-producer.pid"
+    socket_file="/tmp/producer.sock"
     config_file="config.yaml"
     #print opts
     for opt, arg in opts:
@@ -153,6 +178,8 @@ if __name__ == "__main__":
             killing=True
         if opt in ('-p', '--pid'):
             pid_file = arg
+        if opt in ('-s', '--sock'):
+            socket_file = arg
         if opt in ('-c', '--config'):
             config_file = arg
         if opt in ('-v', '--verbose'):
@@ -166,7 +193,7 @@ if __name__ == "__main__":
         sys.exit(1)
         
     config = yaml.load(open(config_file, "r"))
-    producer = ProducerDaemon(pid_file, config)
+    producer = ProducerDaemon(pid_file, socket_file, config)
     if 'logging' in config:
         if 'log_level' in config['logging']:
             log.setLevel(get_log_level(config['logging']['log_level']))
