@@ -88,7 +88,7 @@ class ProducerDaemon(Daemon):
         signal.signal(signal.SIGINT, self.__sigTERMhandler)
         # Ensure unhandled exceptions are logged
         sys.excepthook = excepthook
-        log.warning("Reporting producer started at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        log.info("Reporting producer started at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
         if 'pusher' in config:
             pusher=Pusher(self.__outputs[config['pusher']['output']], config['pusher']['directory'], config['pusher'].get('batch',1))
             pusher.daemon=True
@@ -114,12 +114,13 @@ class ProducerDaemon(Daemon):
                 self.__outputs['buffer'].execute()
                 time.sleep(1)
             self.__outputs['buffer'].cleanup()
+            log.info("Buffer output stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
         if 'pusher' in config:
             pusher.join()
         for c in self.__collectors:
             if c.is_alive():
                 c.join()
-        log.warning("Reporting producer stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        log.info("Reporting producer stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
     
     def console(self, message):
         if message=="config":

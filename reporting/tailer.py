@@ -61,6 +61,10 @@ class Tailer(IDataSource):
         finally:
             if conn:
                 conn.close()
+                
+    def info(self, path):
+        return {'path':path, 'inode':self.__tracker[path]['inode'], 'filename':self.__tracker[path]['filename'], 'mtime':self.__tracker[path]['mtime'], 
+                          'size':self.__tracker[path]['size'], 'line_count':self.__tracker[path]['line_count']}
 
     def find_new_file(self, path):
         tracker=self.__tracker[path]
