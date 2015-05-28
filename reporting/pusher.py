@@ -66,6 +66,9 @@ class Pusher(multiprocessing.Process):
                 time.sleep(1)
                 self.__back_off-=1
             #log.debug("getting files to push...")
+            num_success=0
+            num_invalid=0
+            num_error=0
             for filename in [name for name in os.listdir(self.directory) if self.uuid_pattern.match(name)]:
                 filename = "%s/%s" % (self.directory, filename)
                 try:
@@ -73,15 +76,22 @@ class Pusher(multiprocessing.Process):
                         self.client.push(json.loads(data.read()))
                     os.remove(filename)
                     attempt=0
+                    num_success+=1
                 except MessageInvalidError as e:
                     self.broken(filename)
                     log.error("error processing %s: %s", filename, str(e))
+                    num_invalid+=1
                 except Exception as e:
                     attempt+=1
-                    self.__back_off=min(self.max_backoff, attempt + random.random() * pow(2, attempt))
+                    num_error+=1
                     log.exception("network or remote server error, back off for %d seconds" % self.__back_off)
+                    self.__back_off=min(self.max_backoff, attempt + random.random() * pow(2, attempt))
                     break
                 if not self.__running:
                     break
+            num_total=num_success+num_invalid+num_error
+            if num_total>0:
+                log.info("Messages total: %d; success: %d; invalid: %d; error: %d" % (num_total,num_success,num_invalid,num_error) )
             time.sleep(1)
         log.info("Pusher has stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        
