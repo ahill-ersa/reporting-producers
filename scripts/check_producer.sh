@@ -102,7 +102,11 @@ buffer_size=$(echo $output__buffer__size|tr -d '\n'|tr -d '\r')
 
 if [ ! -z "$buffer_dir" ] && [ ! -z "$buffer_size" ]; then
     dir_usage=$(du -sm $buffer_dir|cut -f1)
-    percentage=$(echo "${dir_usage} * 1024 * 100 / ${buffer_size}" | bc)
+    if which bc >/dev/null; then
+        percentage=$(echo "${dir_usage} * 1024 * 100 / ${buffer_size}" | bc)
+    else
+        percentage=$((${dir_usage} * 1024 * 100 / ${buffer_size}))
+    fi
 
     if [ $percentage -gt $thresh_warn ]; then
         echo "Producer WARNING: cache size reached $thresh_warn%"
