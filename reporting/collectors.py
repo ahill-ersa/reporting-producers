@@ -119,7 +119,7 @@ class Collector(threading.Thread):
                 self.__parser=init_object(self.__config['parser']['name'], **arguments)
         self.__running=True
         self.__session_id=str(uuid.uuid4())
-        self.__max_error_count=5
+        self.__max_error_count=self.__config['input'].get('max_error_count', 5)
         self.__current_data=None
         self.__number_collected=0
         self.__number_failed=0
@@ -138,6 +138,7 @@ class Collector(threading.Thread):
         col_info["number_failed"]=self.__number_failed
         col_info["sleep_count"]=self.__sleep_count
         col_info["error_count"]=self.__error_count
+        col_info["max_error_count"]=self.__max_error_count
         if self.__config['input']['type']=='tailer':
             col_info["tailer"]=self.__input.info(self.__config['input']['path'])
         return col_info
