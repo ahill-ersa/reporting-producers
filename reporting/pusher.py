@@ -27,13 +27,14 @@ class Pusher(multiprocessing.Process):
     ignore = set()
     max_backoff = 2 * 60
 
-    def __init__(self, output, directory, batch=1):
+    def __init__(self, output, directory, batch=1, stats_on=False):
         super(Pusher, self).__init__()
         self.client = output
         self.directory = directory
         self.__running=True
         self.__batch=batch
         self.__back_off=0
+        self.__stats_on=stats_on
 
     def __sigTERMhandler(self, signum, frame):
         log.debug("Caught signal %d. Exiting" % signum)
@@ -90,7 +91,7 @@ class Pusher(multiprocessing.Process):
                 if not self.__running:
                     break
             num_total=num_success+num_invalid+num_error
-            if num_total>0:
+            if num_total>0 and self.__stats_on==True:
                 log.info("Messages total: %d; success: %d; invalid: %d; error: %d" % (num_total,num_success,num_invalid,num_error) )
             time.sleep(1)
         log.info("Pusher has stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
