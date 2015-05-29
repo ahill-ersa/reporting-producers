@@ -84,7 +84,6 @@ if [ "$system" = "debian" ]; then
 fi
 
 MAINPROG="$PRODUCER_LOCATION/$exec_name"
-RETVAL=0
 
 # Check that the config file exists
 [ -f $CONFIG_FILE ] || exit 0
@@ -117,7 +116,7 @@ start() {
     RETVAL=$?
     if [ $RETVAL = 0 ]; then
         touch ${lockfile}
-	echo_ok
+		echo_ok
     else
         echo_fail
     fi
@@ -186,7 +185,7 @@ case "$1" in
         ;;
     *)
         echo $"Usage: reporting-producer {start|stop|restart|status}"
-        RETVAL=2
+        return 2
 esac
 
-exit $RETVAL
+exit $?
