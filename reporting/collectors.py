@@ -152,11 +152,13 @@ class Collector(threading.Thread):
             if count==self.__sleep_time:
                 count=0
                 data=None
+                no_msgs=1
                 try:
                     data=self.__input.get_data(**args)
                     if isinstance(data, collections.deque) or isinstance(data, list):
                         self.__current_data=[l for l in data]
                         payload=[]
+                        no_msgs=len(data)
                         for line in data:
                             log.debug("raw data %s"%line)
                             payload.append(self.generate_payload(line))
@@ -175,12 +177,12 @@ class Collector(threading.Thread):
                     error_count+=1
                     if error_count>=self.__max_error_count:
                         break
-                    self.__number_failed+=1
+                    self.__number_failed+=no_msgs
                     if self.__config['input']['type']=='tailer':
                         self.__input.fail(**args)
                 else:
                     error_count=0
-                    self.__number_collected+=1
+                    self.__number_collected+=no_msgs
                     if self.__config['input']['type']=='tailer':
                         self.__input.success(**args)
                 self.__error_count==error_count
