@@ -35,7 +35,7 @@ class SplitParser(IParser):
         self.__transform=transform
     def parse(self, data):
         log.debug("delimiter %s" % self.__delimiter)
-        list = re.split(self.__delimiter, data)
+        list = [item.strip() for item in re.split(self.__delimiter, data)]
         result = self.__transform.format(*list)
         log.debug("result %s"%result)
         output = json.loads(result)
