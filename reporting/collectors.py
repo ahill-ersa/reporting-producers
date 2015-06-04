@@ -13,7 +13,7 @@ import urllib2, urllib
 
 from reporting.parsers import MatchParser, SplitParser, DummyParser, JsonGrepParser
 from reporting.utilities import getLogger, get_hostname
-from reporting.exceptions import PluginInitialisationError
+from reporting.exceptions import PluginInitialisationError, RemoteServerError
 
 log = getLogger(__name__)
 

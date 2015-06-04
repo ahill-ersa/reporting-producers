@@ -14,6 +14,7 @@ import uuid
 import threading
 import urllib2, urllib
 import base64
+import datetime
 
 from reporting.exceptions import MessageInvalidError, NetworkConnectionError, RemoteServerError
 from reporting.utilities import getLogger
