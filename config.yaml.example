@@ -268,8 +268,9 @@ collector:
         input:
             type: http
             url: http://localhost:15672/api/overview
-            username: reporting
-            password: password
+            auth:
+                username: reporting
+                password: password
             headers:
                 Accept: "application/json"
             frequency: 10
@@ -285,8 +286,9 @@ collector:
         input:
             type: http
             url: http://localhost:15672/api/nodes
-            username: reporting
-            password: password
+            auth:
+                username: reporting
+                password: password
             headers:
                 Accept: "application/json"
             frequency: 10
