@@ -78,7 +78,7 @@ collector:
     xfs_quota_report:
         input:
             type: command
-            path: "/usr/sbin/xfs_quota -x -c 'report -u'"
+            source: "/usr/sbin/xfs_quota -x -c 'report -u'"
             frequency: 600
         parser:
             type: class
@@ -102,7 +102,7 @@ collector:
     xfs_stat:
         input:
             type: file
-            source: "/proc/fs/xfs/stat"
+            path: "/proc/fs/xfs/stat"
             frequency: 10
         parser:
             type: class
