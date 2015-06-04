@@ -166,7 +166,7 @@ collector:
         metadata:
             schema: nfs.mountstats
             version: 1
-    hcp.chargeback:
+    hcp_chargeback:
         input:
             type: http
             url: https://tenant1.hcp1.s3.ersa.edu.au:9090/mapi/tenants/tenant1/chargebackReport
@@ -183,7 +183,7 @@ collector:
         metadata:
             schema: hcp.chargeback
             version: 1
-    zfs.kstat:
+    zfs_kstat:
         input:
             type: class
             name: reporting.plugins.zfs.KstatInput
@@ -192,7 +192,7 @@ collector:
         metadata:
             schema: zfs.kstat
             version: 1
-    zfs.iostat:
+    zfs_iostat:
         input:
             type: command
             source: "/sbin/zpool iostat"
@@ -204,7 +204,7 @@ collector:
         metadata:
             schema: zfs.iostat
             version: 1
-    zfs.list:
+    zfs_list:
         input:
             type: command
             source: "/sbin/zfs list -o name,avail,used,ratio"
@@ -225,7 +225,7 @@ collector:
         metadata:
             schema: libvirt
             version: 1
-    mysql.stat:
+    mysql_stat:
         input:
             type: command
             source: "/usr/bin/mysqladmin stat"
@@ -240,7 +240,7 @@ collector:
         metadata:
             schema: mysql.stat
             version: 1
-    mysql.proc:
+    mysql_proc:
         input:
             type: command
             source: "/usr/bin/mysqladmin proc"
@@ -252,7 +252,7 @@ collector:
         metadata:
             schema: mysql.proc
             version: 1
-    mysql.status:
+    mysql_status:
         input:
             type: command
             source: "/usr/bin/mysqladmin extended"
@@ -264,7 +264,40 @@ collector:
         metadata:
             schema: mysql.proc
             version: 1
-
+    rabbitmq_overview:
+        input:
+            type: http
+            url: http://localhost:15672/api/overview
+            username: reporting
+            password: password
+            headers:
+                Accept: "application/json"
+            frequency: 10
+        parser:
+            type: json
+            arguments:
+                pattern: ""
+        output: buffer
+        metadata:
+            schema: rabbitmq.overview
+            version: 1
+    rabbitmq_nodes:
+        input:
+            type: http
+            url: http://localhost:15672/api/nodes
+            username: reporting
+            password: password
+            headers:
+                Accept: "application/json"
+            frequency: 10
+        parser:
+            type: json
+            arguments:
+                pattern: ""
+        output: buffer
+        metadata:
+            schema: rabbitmq.overview
+            version: 1
 tailer:
     db_path: /mnt/producer/tailer.db
     max_line_number: 300

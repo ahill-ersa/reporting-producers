@@ -191,6 +191,292 @@ device emunfs.cloud.ersa.edu.au:/home/users/ mounted on /home/users with fstype 
 #["chargebackData1","chargebackData2"]
 #[{"chargebackData": 1}, {"chargebackData": 2}]
         print pretty_print(parser.parse(input))
+    def show_rabbitmq_overview(object):
+        parser=JsonGrepParser(pattern="", list_name="rabbitmq-overview")
+        input= \
+"""
+{
+    "contexts": [
+        {
+            "description": "RabbitMQ Management",
+            "node": "rabbit@emumon",
+            "path": "/",
+            "port": 15672
+        },
+        {
+            "description": "Redirect to port 15672",
+            "ignore_in_use": true,
+            "node": "rabbit@emumon",
+            "path": "/",
+            "port": 55672
+        }
+    ],
+    "erlang_full_version": "Erlang R14B04 (erts-5.8.5) [source] [64-bit] [smp:2:2] [rq:2] [async-threads:30] [kernel-poll:true]",
+    "erlang_version": "R14B04",
+    "exchange_types": [
+        {
+            "description": "AMQP topic exchange, as per the AMQP specification",
+            "enabled": true,
+            "name": "topic"
+        },
+        {
+            "description": "AMQP fanout exchange, as per the AMQP specification",
+            "enabled": true,
+            "name": "fanout"
+        },
+        {
+            "description": "AMQP direct exchange, as per the AMQP specification",
+            "enabled": true,
+            "name": "direct"
+        },
+        {
+            "description": "AMQP headers exchange, as per the AMQP specification",
+            "enabled": true,
+            "name": "headers"
+        }
+    ],
+    "listeners": [
+        {
+            "ip_address": "::",
+            "node": "rabbit@emumon",
+            "port": 5672,
+            "protocol": "amqp"
+        },
+        {
+            "ip_address": "::",
+            "node": "rabbit@emumon",
+            "port": 5671,
+            "protocol": "amqp/ssl"
+        }
+    ],
+    "management_version": "3.1.5",
+    "message_stats": {
+        "ack": 6637536,
+        "ack_details": {
+            "rate": 2.4
+        },
+        "deliver": 6637536,
+        "deliver_details": {
+            "rate": 2.4
+        },
+        "deliver_get": 9295014,
+        "deliver_get_details": {
+            "rate": 2.4
+        },
+        "deliver_no_ack": 2657478,
+        "deliver_no_ack_details": {
+            "rate": 0.0
+        },
+        "publish": 6901645,
+        "publish_details": {
+            "rate": 3.0
+        }
+    },
+    "node": "rabbit@emumon",
+    "object_totals": {
+        "channels": 34,
+        "connections": 34,
+        "consumers": 34,
+        "exchanges": 24,
+        "queues": 34
+    },
+    "queue_totals": {
+        "messages": 0,
+        "messages_details": {
+            "rate": 0.0
+        },
+        "messages_ready": 0,
+        "messages_ready_details": {
+            "rate": 0.0
+        },
+        "messages_unacknowledged": 0,
+        "messages_unacknowledged_details": {
+            "rate": 0.0
+        }
+    },
+    "rabbitmq_version": "3.1.5",
+    "statistics_db_node": "rabbit@emumon",
+    "statistics_level": "fine"
+}
+"""    
+#["chargebackData1","chargebackData2"]
+#[{"chargebackData": 1}, {"chargebackData": 2}]
+        print pretty_print(parser.parse(input))
+    def show_rabbitmq_nodes(object):
+        parser=JsonGrepParser(pattern="", list_name="rabbitmq-nodes")
+        input= \
+"""
+[
+    {
+        "applications": [
+            {
+                "description": "RabbitMQ AMQP Client",
+                "name": "amqp_client",
+                "version": "3.1.5"
+            },
+            {
+                "description": "The Erlang ASN1 compiler version 1.6.18",
+                "name": "asn1",
+                "version": "1.6.18"
+            },
+            {
+                "description": "CRYPTO version 2",
+                "name": "crypto",
+                "version": "2.0.4"
+            },
+            {
+                "description": "INETS  CXC 138 49",
+                "name": "inets",
+                "version": "5.7.1"
+            },
+            {
+                "description": "ERTS  CXC 138 10",
+                "name": "kernel",
+                "version": "2.14.5"
+            },
+            {
+                "description": "MNESIA  CXC 138 12",
+                "name": "mnesia",
+                "version": "4.5"
+            },
+            {
+                "description": "MochiMedia Web Server",
+                "name": "mochiweb",
+                "version": "2.7.0-rmq3.1.5-git680dba8"
+            },
+            {
+                "description": "CPO  CXC 138 46",
+                "name": "os_mon",
+                "version": "2.2.7"
+            },
+            {
+                "description": "Public key infrastructure",
+                "name": "public_key",
+                "version": "0.13"
+            },
+            {
+                "description": "RabbitMQ",
+                "name": "rabbit",
+                "version": "3.1.5"
+            },
+            {
+                "description": "RabbitMQ Management Console",
+                "name": "rabbitmq_management",
+                "version": "3.1.5"
+            },
+            {
+                "description": "RabbitMQ Management Agent",
+                "name": "rabbitmq_management_agent",
+                "version": "3.1.5"
+            },
+            {
+                "description": "RabbitMQ Web Dispatcher",
+                "name": "rabbitmq_web_dispatch",
+                "version": "3.1.5"
+            },
+            {
+                "description": "SASL  CXC 138 11",
+                "name": "sasl",
+                "version": "2.1.10"
+            },
+            {
+                "description": "Erlang/OTP SSL application",
+                "name": "ssl",
+                "version": "4.1.6"
+            },
+            {
+                "description": "ERTS  CXC 138 10",
+                "name": "stdlib",
+                "version": "1.17.5"
+            },
+            {
+                "description": "webmachine",
+                "name": "webmachine",
+                "version": "1.10.3-rmq3.1.5-gite9359c7"
+            },
+            {
+                "description": "XML parser",
+                "name": "xmerl",
+                "version": "1.2.10"
+            }
+        ],
+        "auth_mechanisms": [
+            {
+                "description": "SASL PLAIN authentication mechanism",
+                "enabled": true,
+                "name": "PLAIN"
+            },
+            {
+                "description": "QPid AMQPLAIN mechanism",
+                "enabled": true,
+                "name": "AMQPLAIN"
+            },
+            {
+                "description": "RabbitMQ Demo challenge-response authentication mechanism",
+                "enabled": false,
+                "name": "RABBIT-CR-DEMO"
+            }
+        ],
+        "contexts": [
+            {
+                "description": "RabbitMQ Management",
+                "path": "/",
+                "port": 15672
+            },
+            {
+                "description": "Redirect to port 15672",
+                "ignore_in_use": true,
+                "path": "/",
+                "port": 55672
+            }
+        ],
+        "disk_free": 24169287680,
+        "disk_free_alarm": false,
+        "disk_free_limit": 1000000000,
+        "exchange_types": [
+            {
+                "description": "AMQP topic exchange, as per the AMQP specification",
+                "enabled": true,
+                "name": "topic"
+            },
+            {
+                "description": "AMQP fanout exchange, as per the AMQP specification",
+                "enabled": true,
+                "name": "fanout"
+            },
+            {
+                "description": "AMQP direct exchange, as per the AMQP specification",
+                "enabled": true,
+                "name": "direct"
+            },
+            {
+                "description": "AMQP headers exchange, as per the AMQP specification",
+                "enabled": true,
+                "name": "headers"
+            }
+        ],
+        "fd_total": 1024,
+        "fd_used": 56,
+        "mem_alarm": false,
+        "mem_limit": 3302098534,
+        "mem_used": 44706728,
+        "name": "rabbit@emumon",
+        "os_pid": "1386",
+        "partitions": [],
+        "proc_total": 1048576,
+        "proc_used": 647,
+        "processors": 2,
+        "run_queue": 0,
+        "running": true,
+        "sockets_total": 829,
+        "sockets_used": 36,
+        "statistics_level": "fine",
+        "type": "disc",
+        "uptime": 1454554958
+    }
+]
+"""    
+        print pretty_print(parser.parse(input))
     def show_mysql_stat(object):
         input="Uptime: 15312260  Threads: 75  Questions: 1437448576  Slow queries: 0  Opens: 330  Flush tables: 1  Open tables: 239  Queries per second avg: 93.875"
         parser=SplitParser("\s+", "{{\"Uptime\":{1},\"Threads\":{3},\"Questions\":{5},\"Slow queries\":{8},\"Opens\":{10},\"Flush tables\":{13},\"Open tables\":{16},\"Queries per second avg\":{21}}}")
@@ -612,7 +898,8 @@ def print_usage():
     print "  example_name is one of %s" % schemas
 
 if __name__ == '__main__':
-    schemas=["pbs.accouting.log","pbs.server.log","pbs.mom.log","xfs.quota.report","xfs.stat","nfs.mountstats","hcp.chargeback","mysql.stat","mysql.proc","mysql.status"]
+    schemas=["pbs.accouting.log","pbs.server.log","pbs.mom.log","xfs.quota.report","xfs.stat","nfs.mountstats","hcp.chargeback",
+             "mysql.stat","mysql.proc","mysql.status","rabbitmq.overview","rabbitmq.nodes"]
     if len(sys.argv)<2:
         print_usage()
         sys.exit(1)

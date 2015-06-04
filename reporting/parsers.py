@@ -53,7 +53,7 @@ class DummyParser(IParser):
         return output
 
 class JsonGrepParser(IParser):
-    def __init__(self, pattern, list_name="list"):
+    def __init__(self, pattern=None, list_name="list"):
         self.__pattern=pattern
         self.__list_name=list_name
     def parse(self, data):
@@ -65,10 +65,15 @@ class JsonGrepParser(IParser):
         except ValueError as e:
             log.exception('Could not load JSON object from input data.')
             raise InputDataError()
-    
-        self.jsongrep(j, map(re.compile, self.__pattern.split(" ")), output)
-        if self.__list_name in output and len(output[self.__list_name])==1:
-            output[self.__list_name]=output[self.__list_name][0]
+        if self.__pattern and len(self.__pattern)>0:
+            self.jsongrep(j, map(re.compile, self.__pattern.split(" ")), output)
+            if self.__list_name in output and len(output[self.__list_name])==1:
+                output[self.__list_name]=output[self.__list_name][0]
+        else:
+            if isinstance(j, list):
+                output[self.__list_name]=j
+            else:
+                output.update(j)
         return output
     # from http://blogs.fluidinfo.com/terry/2010/11/25/jsongrep-py-python-for-extracting-pieces-of-json-objects/
     def jsongrep(self, d, patterns, output):
