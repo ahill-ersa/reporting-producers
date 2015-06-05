@@ -300,6 +300,19 @@ collector:
         metadata:
             schema: rabbitmq.overview
             version: 1
+    hnas_filesystems:
+        input:
+            type: class
+            name: reporting.plugins.hnas.FileSystemsInput
+            arguments:
+                host: 192.168.20.10
+                username: reporting
+                password: password
+            frequency: 600
+        output: buffer
+        metadata:
+            schema: hnas.filesystems
+            version: 1
 tailer:
     db_path: /mnt/producer/tailer.db
     max_line_number: 300
