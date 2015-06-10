@@ -18,7 +18,7 @@ class Tailer(IDataSource):
         self.__max_line_number=config.get('max_line_number', 1000)
         self.__interval=0
         self.__sizehint = config.get('sizehint', 1048576)
-        self.__check_new_file_interval=10
+        self.__check_new_file_interval=config.get('check_new_file_interval', 10)
         self.__tracker={}
         self.__init_tracker()
         
@@ -112,7 +112,7 @@ class Tailer(IDataSource):
                 log.debug("current file %s; current location %d ; file size %d "% (current_file, tracker['file_handle'].tell(), current_st.st_size))
                 if tracker['file_handle'].tell()>=current_st.st_size:
                     for file in file_list:
-                        if file['filename']!=current_file and file['mtime']>current_st.st_mtime:
+                        if file['filename']!=current_file and file['mtime']>=current_st.st_mtime:
                             # found a new file
                             log.info("reached end of file %s, track a new file %s"%(current_file, file['filename']))
                             tracker['filename']=file['filename']
@@ -132,7 +132,7 @@ class Tailer(IDataSource):
         for file in glob.glob(path):
             file_st=os.stat(file)
             file_list.append({'filename': file, "inode": file_st.st_ino, "mtime": int(file_st.st_mtime), "size": file_st.st_size})
-        file_list.sort(key=lambda file: file['mtime'])
+        file_list.sort(key=lambda file: (file['mtime'], file['filename']))
         return file_list
     
     def add_new_tracker(self, path, collect_history_data=False):

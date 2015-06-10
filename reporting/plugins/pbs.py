@@ -5,8 +5,10 @@
 from reporting.parsers import IParser
 from reporting.collectors import IDataSource
 from reporting.utilities import getLogger, list_to_dict, get_hostname
+from reporting.outputs import IOutput
 import json
 import time
+import os
 
 log = getLogger(__name__)
 
@@ -151,3 +153,36 @@ class AccountingLogParser(IParser):
                 list_to_dict(data, kv[0], kv[1])
     
         return data
+
+class AccountingCsvOutput(IOutput):
+    def __init__(self, path):
+        self.__path = path
+        self.__handle=open(self.__path, "w")
+        self.__data={}
+        
+    def push(self, data):
+        if not isinstance(data, list):
+            data = [data]
+        for item in data:
+            if 'user' in item['data']:
+                username=item['data']['user']
+                if item['data']['state']=='exited':
+                    if username not in self.__data:
+                        self.__data[username]={'num_jobs':0, 'hours':0}
+                    walltime=item['data']['resources_used']['walltime'].split(':')
+                    cores=sum(len(c) for h,c in item['data']['exec_host'].iteritems())
+                    hours=(float(walltime[0])+float(walltime[1])/60+float(walltime[2])/3600)*cores
+                    log.debug('data %s cores %s walltime %s hours %s' %(item, cores, walltime, hours))
+                    self.__data[username]['num_jobs']+=1
+                    self.__data[username]['hours']+=hours
+        log.debug("writing data to file %s" % self.__path)
+        self.__handle.seek(0)
+        self.__handle.write("username,Number of Jobs,Hours" + os.linesep)
+        for k,v in self.__data.iteritems():
+            self.__handle.write("%s,%d,%.2f"%(k,v['num_jobs'],v['hours']) + os.linesep)
+        self.__handle.flush()
+        
+    def close(self):
+        log.debug("closing file handle for %s" % self.__path)
+        if self.__handle:
+            self.__handle.close()

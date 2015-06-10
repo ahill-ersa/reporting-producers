@@ -12,7 +12,7 @@ import collections
 import urllib2, urllib
 
 from reporting.parsers import MatchParser, SplitParser, DummyParser, JsonGrepParser
-from reporting.utilities import getLogger, get_hostname
+from reporting.utilities import getLogger, get_hostname, init_object
 from reporting.exceptions import PluginInitialisationError, RemoteServerError
 
 log = getLogger(__name__)
@@ -205,29 +205,3 @@ class Collector(threading.Thread):
         log.debug("payload to push: %s"%payload)
         return payload
         
-def init_object(class_name, **arguments):
-    mod_name = '.'.join(class_name.split('.')[:-1])
-    class_name = class_name.split('.')[-1]
-    log.debug("Loading plugin %s %s"%(mod_name, class_name))
-    try:
-        mod = __import__(mod_name, globals(), locals(), [class_name])
-    except SyntaxError as e:
-        raise PluginInitialisationError(
-            "Plugin %s (%s) contains a syntax error at line %s" %
-            (class_name, e.filename, e.lineno))
-    except ImportError as e:
-        log.exception(e)
-        raise PluginInitialisationError(
-            "Failed to import plugin %s: %s" %
-            (class_name, e[0]))
-    klass = getattr(mod, class_name, None)
-    if not klass:
-        raise PluginInitialisationError(
-            'Plugin class %s does not exist' % class_name)
-    try:
-        return klass(**arguments)
-    except Exception as exc:
-        raise PluginInitialisationError(
-            "Failed to load plugin %s with "
-            "the following error: %s - %s" %
-            (class_name, exc.__class__.__name__, exc.message))

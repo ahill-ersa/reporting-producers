@@ -13,7 +13,7 @@ import getopt
 from getopt import GetoptError
 
 from daemon import Daemon
-from reporting.utilities import getLogger, excepthook, get_log_level, set_global
+from reporting.utilities import getLogger, excepthook, get_log_level, set_global, init_object
 from reporting.__version__ import version
 from reporting.outputs import KafkaHTTPOutput, BufferOutput, FileOutput, BufferThread
 from reporting.pusher import Pusher
@@ -61,22 +61,29 @@ class ProducerDaemon(Daemon):
         if 'global' in config:
             global_vars=config['global']
             set_global(global_vars)
-        if 'buffer' in config['output']:
-            if not 'directory' in config['output']['buffer']:
-                print("ERROR: buffer directory not specified in config.")
-                return False
-            buffer_dir=config['output']['buffer']['directory']
-            if os.path.exists(buffer_dir) and (not os.path.isdir(buffer_dir)):
-                print("ERROR: buffer directory exists but it is not a directory.")
-                return False
-            if not os.path.exists(buffer_dir):
-                log.info("Creating buffer directory %s." % buffer_dir)
-                os.makedirs(buffer_dir)
-            self.__outputs['buffer']=BufferOutput(config["output"]['buffer'])
-        if 'kafka-http' in config['output']:
-            self.__outputs['kafka-http']=KafkaHTTPOutput(config["output"]['kafka-http'])
-        if 'file' in config['output']:
-            self.__outputs['file']=FileOutput(config["output"]['file'])
+        for n,cfg in config['output'].iteritems():
+            if n=='buffer':
+                if not 'directory' in cfg:
+                    print("ERROR: buffer directory not specified in config.")
+                    return False
+                buffer_dir=cfg['directory']
+                if os.path.exists(buffer_dir) and (not os.path.isdir(buffer_dir)):
+                    print("ERROR: buffer directory exists but it is not a directory.")
+                    return False
+                if not os.path.exists(buffer_dir):
+                    log.info("Creating buffer directory %s." % buffer_dir)
+                    os.makedirs(buffer_dir)
+                self.__outputs[n]=BufferOutput(cfg)
+            elif n=='kafka-http':
+                self.__outputs[n]=KafkaHTTPOutput(cfg)
+            elif n=='file':
+                self.__outputs[n]=FileOutput(cfg)
+            elif 'class' in cfg:
+                arguments={}
+                if 'arguments' in cfg:
+                    arguments=cfg['arguments']
+                self.__outputs[n]=init_object(cfg['class'], **arguments)
+
         if 'pusher' in config:
             if not 'directory' in config['pusher'] or not 'output' in config['pusher']:
                 print("ERROR: need to speficity directory and output in pusher.")
