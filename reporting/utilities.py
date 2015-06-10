@@ -9,6 +9,7 @@ import string
 import socket
 import datetime
 import platform
+import time
 
 global_vars=None
 
@@ -63,3 +64,6 @@ def formatExceptionInfo():
     """ Consistently format exception information """
     cla, exc = sys.exc_info()[:2]
     return (cla.__name__, str(exc))
+
+def init_message():
+    return {'timestamp': int(time.time()), 'hostname': get_hostname()}

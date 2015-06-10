@@ -41,12 +41,15 @@ def get_session_headers(host, username, password):
     return headers
 
 class FileSystemsInput(IDataSource):
-    def __init__(self, host, username, password):
+    def __init__(self, host, username, password, show_volumes=None):
         self.__host=host
         self.__username=username
         self.__password=password
+        self.__show_volumes=show_volumes
     def get_data(self, **kwargs):
         url='https://'+self.__host+'/mgr/app/template/simple%2CDownloadFileSystemsScreen.vm'
+        url_change_fs = 'https://'+self.__host+'/mgr/app/action/storage.SelectFileSystemAction/eventsubmit_doprocessselectfilesystem/ignored'
+        url_quota = 'https://'+self.__host+'/mgr/app/template/simple%2CDownloadQuotasScreen.vm'
         data={}
         data['timestamp'] = int(time.time())
         data['hostname'] = get_hostname()
@@ -55,10 +58,39 @@ class FileSystemsInput(IDataSource):
         response = urllib2.urlopen(request)
         raw_data=response.read()
         log.debug(raw_data)
-        data['filesystems']=[]
+        data['filesystems']={}
         for line in raw_data.split('\n')[1:]:
             if len(line.strip())==0:
                 continue
             items=line.split(',')
-            data['filesystems'].append({'lable':items[0],'capacity':items[1],'live-fs-used':items[2],'snapshot-used':items[3],'free':items[4]})
+            fs_name=items[0]
+            data['filesystems'][fs_name]={'capacity':items[1],'live-fs-used':items[2],'snapshot-used':items[3],'free':items[4]}
+            if self.__show_volumes and fs_name in self.__show_volumes:
+                form_data=[('selectFS_evsId',self.__show_volumes[fs_name][1]),('selectFS_currentNameSpace',''),('selectFS_devId',self.__show_volumes[fs_name][0])]
+                log.debug('change fs %s %s %s' % (self.__show_volumes[fs_name], headers, urllib.urlencode(form_data)))
+                req = urllib2.Request(url_change_fs, urllib.urlencode(form_data), headers)
+                response = urllib2.urlopen(req)
+                request = urllib2.Request(url_quota, None, headers)
+                response = urllib2.urlopen(request)
+                quota_data = response.read()
+                log.debug(quota_data)
+                if len(quota_data.split('\n'))>1:
+                    data['filesystems'][fs_name]['virtual_volumes']=[]
+                    for quota_line in quota_data.split('\n')[1:]:
+                        if len(quota_line.strip())==0:
+                            continue
+                        quota_items=quota_line.split(',')
+                        file_count_hard_limit=''
+                        if len(quota_items[15])>0:
+                            file_count_hard_limit=int(quota_items[15])
+                        data['filesystems'][fs_name]['virtual_volumes'].append({'volume-name':quota_items[1],'path':quota_items[2],
+                                                                                'contacts':quota_items[3],'user-group-account':quota_items[4],
+                                                                                'quota-type':quota_items[5],'created-by':quota_items[6],
+                                                                                'usage':float(quota_items[7])/1048576,'usage-limit':float(quota_items[8])/1048576,
+                                                                                'usage-hard-limit':quota_items[9],'usage-reset':int(quota_items[10]),
+                                                                                'usage-warning':int(quota_items[11]),'usage-critical':int(quota_items[12]),
+                                                                                'file-count':int(quota_items[13]),'file-count-limit':int(quota_items[14]),
+                                                                                'file-count-hard-limit':file_count_hard_limit,'file-count-reset':int(quota_items[16]),
+                                                                                'file-count-warning':int(quota_items[17]),'file-count-critical':int(quota_items[18])})
+                        
         return data
