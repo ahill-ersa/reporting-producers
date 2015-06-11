@@ -28,6 +28,7 @@ def get_session_headers(host, username, password):
     log.debug(response.info())
     cookie = response.info().getheader('Set-Cookie').split(';')[0]
     log.debug(cookie)
+    response.close()
     #log in
     data = urllib.urlencode(user_data)
     header={'Cookie': cookie}
@@ -36,6 +37,7 @@ def get_session_headers(host, username, password):
     response = urllib2.urlopen(req)
     cookies=response.info().getheader('Set-Cookie').split(',')
     log.debug(cookies)
+    response.close()
     headers={} #"Referer": "https://192.168.20.10/mgr/app/action/storage.VolumeAction/eventsubmit_dogotoview/ignored/f5/true"}
     headers["Cookie"]=cookies[0].strip().split(';')[0]+"; "+cookies[1].strip().split(';')[0]
     return headers
@@ -57,6 +59,7 @@ class FileSystemsInput(IDataSource):
         request = urllib2.Request(url, None, headers)
         response = urllib2.urlopen(request)
         raw_data=response.read()
+        response.close()
         log.debug(raw_data)
         data['filesystems']={}
         for line in raw_data.split('\n')[1:]:
@@ -73,6 +76,7 @@ class FileSystemsInput(IDataSource):
                 request = urllib2.Request(url_quota, None, headers)
                 response = urllib2.urlopen(request)
                 quota_data = response.read()
+                response.close()
                 log.debug(quota_data)
                 if len(quota_data.split('\n'))>1:
                     data['filesystems'][fs_name]['virtual_volumes']=[]

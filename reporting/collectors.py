@@ -144,7 +144,7 @@ class Collector(threading.Thread):
         return col_info
         
     def run(self):
-        count=0
+        count=self.__sleep_time
         error_count=0
         log.info("collector %s has started."%self.__collector_name)
         while self.__running:
