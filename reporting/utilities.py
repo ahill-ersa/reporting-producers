@@ -9,6 +9,8 @@ import string
 import socket
 import datetime
 import platform
+import time
+from reporting.exceptions import PluginInitialisationError
 
 global_vars=None
 
@@ -22,6 +24,8 @@ def getLogger(name):
     if "." in name:
         name = "producer.%s" % name.rpartition(".")[-1]
     return logging.getLogger(name)
+
+log = getLogger(__name__)
 
 def excepthook(exc_type, exc_value, exc_traceback):
     """Except hook used to log unhandled exceptions to log
@@ -63,3 +67,33 @@ def formatExceptionInfo():
     """ Consistently format exception information """
     cla, exc = sys.exc_info()[:2]
     return (cla.__name__, str(exc))
+
+def init_message():
+    return {'timestamp': int(time.time()), 'hostname': get_hostname()}
+
+def init_object(class_name, **arguments):
+    mod_name = '.'.join(class_name.split('.')[:-1])
+    class_name = class_name.split('.')[-1]
+    log.debug("Loading plugin %s %s"%(mod_name, class_name))
+    try:
+        mod = __import__(mod_name, globals(), locals(), [class_name])
+    except SyntaxError as e:
+        raise PluginInitialisationError(
+            "Plugin %s (%s) contains a syntax error at line %s" %
+            (class_name, e.filename, e.lineno))
+    except ImportError as e:
+        log.exception(e)
+        raise PluginInitialisationError(
+            "Failed to import plugin %s: %s" %
+            (class_name, e[0]))
+    klass = getattr(mod, class_name, None)
+    if not klass:
+        raise PluginInitialisationError(
+            'Plugin class %s does not exist' % class_name)
+    try:
+        return klass(**arguments)
+    except Exception as exc:
+        raise PluginInitialisationError(
+            "Failed to load plugin %s with "
+            "the following error: %s - %s" %
+            (class_name, exc.__class__.__name__, exc.message))

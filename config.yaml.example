@@ -166,7 +166,7 @@ collector:
         metadata:
             schema: nfs.mountstats
             version: 1
-    hcp_chargeback:
+    hcp_chargeback_one_tenant:
         input:
             type: http
             url: https://tenant1.hcp1.s3.ersa.edu.au:9090/mapi/tenants/tenant1/chargebackReport
@@ -179,6 +179,20 @@ collector:
             arguments:
                 pattern: "chargebackData"
                 list_name: "hcp-chargeback"
+        output: buffer
+        metadata:
+            schema: hcp.chargeback
+            version: 1
+    hcp.chargeback_all_tenants:
+        input:
+            type: class
+            name: reporting.plugins.hcp.ChargeBackInput
+            arguments:
+                host: dev.hcp1.s3.ersa.edu.au:9090
+                username: username
+                password: password
+                query_period: 1
+            frequency: 60
         output: buffer
         metadata:
             schema: hcp.chargeback
@@ -299,6 +313,19 @@ collector:
         output: buffer
         metadata:
             schema: rabbitmq.overview
+            version: 1
+    hnas_filesystems:
+        input:
+            type: class
+            name: reporting.plugins.hnas.FileSystemsInput
+            arguments:
+                host: 192.168.20.10
+                username: reporting
+                password: password
+            frequency: 600
+        output: buffer
+        metadata:
+            schema: hnas.filesystems
             version: 1
 tailer:
     db_path: /mnt/producer/tailer.db
