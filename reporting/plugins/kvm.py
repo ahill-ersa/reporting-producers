@@ -94,7 +94,8 @@ class LibvirtInput(IDataSource):
         nova_network = load_nova_network()
         for domID in conn.listDomainsID():
             dom = conn.lookupByID(domID)
-            data[domID]=process(dom, nova_network)
+            if get_mac(dom) in nova_network:
+                data[domID]=process(dom, nova_network)
         data['timestamp'] = int(time.time())
         data['hostname'] = get_hostname()
         return data

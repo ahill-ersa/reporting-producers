@@ -319,7 +319,7 @@ collector:
             type: class
             name: reporting.plugins.hnas.FileSystemsInput
             arguments:
-                host: 192.168.20.10
+                host: hostname
                 username: reporting
                 password: password
             frequency: 600
@@ -327,6 +327,35 @@ collector:
         metadata:
             schema: hnas.filesystems
             version: 1
+    nova_list:
+        input:
+            type: class
+            name: reporting.plugins.openstack.NovaListInput
+            arguments:
+                project: tenant-name
+                username: username
+                password: token
+                auth_url: https://keystone.rc.nectar.org.au:5000/v2.0/
+            frequency: 10
+        output: buffer
+        metadata:
+            schema: nova.list
+            version: 1
+    keystone_list:
+        input:
+            type: class
+            name: reporting.plugins.openstack.KeystoneListInput
+            arguments:
+                project: tenant-name
+                username: username
+                password: token
+                auth_url: https://keystone.rc.nectar.org.au:5000/v2.0/
+            frequency: 10
+        output: buffer
+        metadata:
+            schema: keystone.list
+            version: 1
+
 tailer:
     db_path: /mnt/producer/tailer.db
     max_line_number: 300

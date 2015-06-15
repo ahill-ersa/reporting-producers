@@ -176,6 +176,8 @@ class Collector(threading.Thread):
                     log.exception('unable to get or parse data. data: %s'%data)
                     error_count+=1
                     if error_count>=self.__max_error_count:
+                        self.__running=False
+                        self.__error_count==error_count
                         break
                     self.__number_failed+=no_msgs
                     if self.__config['input']['type']=='tailer':
