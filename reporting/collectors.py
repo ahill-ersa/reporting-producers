@@ -4,7 +4,7 @@
 
 import threading
 from subprocess import Popen, PIPE
-import time
+import time, datetime
 import shlex
 import uuid
 import json
@@ -14,6 +14,7 @@ import urllib2, urllib
 from reporting.parsers import MatchParser, SplitParser, DummyParser, JsonGrepParser
 from reporting.utilities import getLogger, get_hostname, init_object
 from reporting.exceptions import PluginInitialisationError, RemoteServerError
+from reporting.crontab import CronEvent
 
 log = getLogger(__name__)
 
@@ -79,6 +80,11 @@ class Collector(threading.Thread):
         self.__collector_name=collector_name
         self.__config=config
         self.__sleep_time=self.__config['input'].get('frequency',10)
+        schedule=self.__config['input'].get('schedule',None)
+        self.__schedule=None
+        if schedule is not None:
+            self.__schedule=CronEvent(schedule)
+            log.debug("job scheduled at %s"%self.__schedule.numerical_tab)
         self.__input=None
         self.__parser=None
         self.__output=output
@@ -119,12 +125,13 @@ class Collector(threading.Thread):
                 self.__parser=init_object(self.__config['parser']['name'], **arguments)
         self.__running=True
         self.__session_id=str(uuid.uuid4())
-        self.__max_error_count=self.__config['input'].get('max_error_count', 5)
+        self.__max_error_count=self.__config['input'].get('max_error_count', -1)
         self.__current_data=None
         self.__number_collected=0
         self.__number_failed=0
         self.__sleep_count=0
         self.__error_count=0
+        self.__last_check_minute=-1
         
     def quit(self):
         self.__running=False
@@ -142,6 +149,17 @@ class Collector(threading.Thread):
         if self.__config['input']['type']=='tailer':
             col_info["tailer"]=self.__input.info(self.__config['input']['path'])
         return col_info
+    
+    def match_time(self):
+        """Return True if this event should trigger at the specified datetime"""
+        if self.__schedule is None:
+            return False
+        t=datetime.datetime.now()
+        if t.minute==self.__last_check_minute:
+            return False
+        self.__last_check_minute=t.minute
+        log.debug("check if cron job can be triggered. %d"%self.__last_check_minute)
+        return self.__schedule.check_trigger((t.year,t.month,t.day,t.hour,t.minute))
         
     def run(self):
         count=self.__sleep_time
@@ -149,7 +167,8 @@ class Collector(threading.Thread):
         log.info("collector %s has started."%self.__collector_name)
         while self.__running:
             args={'config': self.__config['input']}
-            if count==self.__sleep_time:
+            if (self.__schedule is None and count==self.__sleep_time) or self.match_time():
+                log.debug("going to collect data.")
                 count=0
                 data=None
                 no_msgs=1
@@ -175,7 +194,7 @@ class Collector(threading.Thread):
                     self.__current_data=data
                     log.exception('unable to get or parse data. data: %s'%data)
                     error_count+=1
-                    if error_count>=self.__max_error_count:
+                    if self.__max_error_count>0 and error_count>=self.__max_error_count:
                         self.__running=False
                         self.__error_count==error_count
                         break
@@ -190,7 +209,8 @@ class Collector(threading.Thread):
                 self.__error_count==error_count
             else:
                 time.sleep(1)
-                count+=1
+                if self.__schedule is None:
+                    count+=1
             self.__sleep_count=count
         self.__output.close()
         log.info("collector %s has stopped."%self.__collector_name)
