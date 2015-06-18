@@ -21,7 +21,7 @@ class NovaListInput(IDataSource):
         data=init_message()
         data['instances']=[]
         from novaclient.v1_1 import client
-        conn=client.Client(self.__username, self.__password, self.__project, self.__auth_url)
+        conn=client.Client(self.__username, self.__password, self.__project, self.__auth_url, service_type='compute')
         conn.authenticate()
         servers = conn.servers.list(search_opts={'all_tenants':1})
         for server in servers:

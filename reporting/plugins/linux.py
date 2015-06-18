@@ -3,10 +3,13 @@
 # pylint: disable=broad-except
 
 from reporting.parsers import IParser
+from reporting.collectors import IDataSource
 import re
 from fnmatch import fnmatch
-from reporting.utilities import getLogger, get_hostname
+from reporting.utilities import getLogger, get_hostname, init_message
 import time
+import json, grp, os, pwd, stat, sys
+from os.path import join
 
 log = getLogger(__name__)
 
@@ -135,3 +138,51 @@ class NetDevParser(IParser):
         data['timestamp'] = int(time.time())
         data['hostname'] = get_hostname()
         return data
+
+class FileSystemUsage(IDataSource):
+    def __init__(self, path):
+        self.__path=path
+    def get_data(self, **kwargs):
+        inodes = set()
+        users = {}
+        groups = {}
+        data = init_message()
+         
+        data["fs"] = { "name" : self.__path }
+        fs_raw = str(os.statvfs(self.__path))
+        for kv in [field.split("=") for field in fs_raw[fs_raw.index("(")+1:-1].split(", ")]:
+            data["fs"][kv[0][2:]] = int(kv[1])
+         
+        data["usage"] = {}
+        for root, dirs, files in os.walk(self.__path):
+            for name in files:
+                filename = join(root, name)
+                metadata = os.lstat(filename)
+                if stat.S_ISREG(metadata.st_mode):
+                    if metadata.st_nlink == 1 or metadata.st_ino not in inodes:
+                        if metadata.st_uid not in users:
+                            try:
+                                users[metadata.st_uid] = pwd.getpwuid(metadata.st_uid).pw_name
+                            except:
+                                users[metadata.st_uid] = metadata.st_uid
+                        if metadata.st_gid not in groups:
+                            try:
+                                groups[metadata.st_gid] = grp.getgrgid(metadata.st_gid).gr_name
+                            except:
+                                groups[metadata.st_gid] = metadata.st_gid
+                     
+                        user = users[metadata.st_uid]
+                        group = groups[metadata.st_gid]
+                        key = str(user) + "/" + str(group)
+                     
+                        if key not in data["usage"]:
+                            data["usage"][key] = { "files" : 0, "blocks" : 0, "bytes" : 0 }
+                     
+                        data["usage"][key]["files"] += 1
+                        data["usage"][key]["bytes"] += metadata.st_size
+                        data["usage"][key]["blocks"] += metadata.st_blocks
+                    if metadata.st_nlink > 1:
+                        inodes.add(metadata.st_ino)
+         
+        return data     
+     
