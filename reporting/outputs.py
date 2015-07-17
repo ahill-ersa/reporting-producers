@@ -45,6 +45,7 @@ class KafkaHTTPOutput(IOutput):
     def push(self, data):
         if not isinstance(data, list):
             data = [data]
+        sub=data[0]['schema'].split('.')[0]
         payload = json.dumps(data)
         log.debug("push data to http: %s" % payload[:1024])
         base64string = base64.encodestring('%s:%s' % (self.auth[0], self.auth[1])).replace('\n', '')
@@ -56,7 +57,7 @@ class KafkaHTTPOutput(IOutput):
             #auth = urllib2.HTTPBasicAuthHandler(password_manager) # create an authentication handler
             #opener = urllib2.build_opener(auth) # create an opener with the authentication handler
             #urllib2.install_opener(opener) # install the opener... 
-            req = urllib2.Request(self.url, payload, self.headers)
+            req = urllib2.Request(self.url+"."+sub, payload, self.headers)
             handler = urllib2.urlopen(req)
         except urllib2.HTTPError as e:
             log.error('response code %d' % e.code)
@@ -146,8 +147,14 @@ class BufferOutput(IOutput):
                 self.log_space_warning=False
                 log.debug("data to save: %s"%data)
                 data_id = data["id"]
-                filename = "%s/%s" % (self.directory, data_id)
-                filename_tmp = "%s/.%s" % (self.directory, data_id)
+                data_dir = self.directory
+                if 'schema' in data:
+                    sub_dir = data['schema'].split('.')[0]
+                    data_dir += os.sep + sub_dir
+                    if not os.path.exists(data_dir):
+                        os.mkdir(data_dir)
+                filename = "%s/%s" % (data_dir, data_id)
+                filename_tmp = "%s/.%s" % (data_dir, data_id)
                 try:
                     with open(filename_tmp, "w") as output:
                         output.write(json.dumps(data))

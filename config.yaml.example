@@ -355,6 +355,16 @@ collector:
         metadata:
             schema: keystone.list
             version: 1
+    filesystem_usage_tmp:
+        input:
+            type: class
+            name: reporting.plugins.linux.FileSystemUsage
+            arguments:
+                path: /tmp
+        output: buffer
+        metadata:
+            schema: filesystem.usage
+            version: 1
 
 tailer:
     db_path: /mnt/producer/tailer.db

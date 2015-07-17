@@ -8,25 +8,35 @@ from reporting.utilities import getLogger, init_message
 import json
 import time
 import copy
+import uuid
 
 log = getLogger(__name__)
 
 class NovaListInput(IDataSource):
-    def __init__(self, project, username, password, auth_url):
+    def __init__(self, project, username, password, auth_url, number_per_page=500):
         self.__project=project
         self.__username=username
         self.__password=password
         self.__auth_url=auth_url
+        self.__number_per_page=number_per_page
     def get_data(self, **kwargs):
-        data=init_message()
-        data['instances']=[]
-        from novaclient.v1_1 import client
-        conn=client.Client(self.__username, self.__password, self.__project, self.__auth_url, service_type='compute')
-        conn.authenticate()
-        servers = conn.servers.list(search_opts={'all_tenants':1})
-        for server in servers:
-            data['instances'].append(server._info)
-        return data
+        query_id=str(uuid.uuid4())
+        data_list=[]
+        from novaclient import client
+        conn=client.Client(2, self.__username, self.__password, self.__project, self.__auth_url)
+        servers = conn.servers.list(search_opts={'all_tenants':1}, limit=self.__number_per_page)
+        while len(servers)>0:
+            log.debug("Got %d instances, first id %s" % (len(servers), servers[0].id))
+            data=init_message()
+            data['query_id']=query_id
+            data['instances']=[]
+            for server in servers:
+                data['instances'].append(server._info)
+            data_list.append(data)
+            last_id=servers[-1].id
+            log.debug("last_id %s" %last_id)
+            servers = conn.servers.list(search_opts={'all_tenants':1}, marker=last_id, limit=self.__number_per_page)
+        return data_list
     
 class KeystoneListInput(IDataSource):
     def __init__(self, project, username, password, auth_url):

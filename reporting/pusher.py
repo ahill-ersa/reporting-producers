@@ -70,26 +70,32 @@ class Pusher(multiprocessing.Process):
             num_success=0
             num_invalid=0
             num_error=0
-            for filename in [name for name in os.listdir(self.directory) if self.uuid_pattern.match(name)]:
-                filename = "%s/%s" % (self.directory, filename)
-                try:
-                    with open(filename, "r") as data:
-                        self.client.push(json.loads(data.read()))
-                    os.remove(filename)
-                    attempt=0
-                    num_success+=1
-                except MessageInvalidError as e:
-                    self.broken(filename)
-                    log.error("error processing %s: %s", filename, str(e))
-                    num_invalid+=1
-                except Exception as e:
-                    attempt+=1
-                    num_error+=1
-                    log.exception("network or remote server error, back off for %d seconds" % self.__back_off)
-                    self.__back_off=min(self.max_backoff, attempt + random.random() * pow(2, attempt))
-                    break
-                if not self.__running:
-                    break
+            for (path, dirs, files) in os.walk(self.directory):
+                data_list=[]
+                data_size=0
+                filename_list=[]
+                for file in files:
+                    filename = os.path.join(path, file)
+                    if not self.uuid_pattern.match(file):
+                        continue
+                    try:
+                        with open(filename, "r") as data:
+                            self.client.push(json.loads(data.read()))
+                        os.remove(filename)
+                        attempt=0
+                        num_success+=1
+                    except MessageInvalidError as e:
+                        self.broken(filename)
+                        log.error("error processing %s: %s", filename, str(e))
+                        num_invalid+=1
+                    except Exception as e:
+                        attempt+=1
+                        num_error+=1
+                        log.exception("network or remote server error, back off for %d seconds" % self.__back_off)
+                        self.__back_off=min(self.max_backoff, attempt + random.random() * pow(2, attempt))
+                        break
+                    if not self.__running:
+                        break
             num_total=num_success+num_invalid+num_error
             if num_total>0 and self.__stats_on==True:
                 log.info("Messages total: %d; success: %d; invalid: %d; error: %d" % (num_total,num_success,num_invalid,num_error) )
