@@ -15,6 +15,7 @@ import threading
 import urllib2, urllib
 import base64
 import datetime
+import collections
 
 from reporting.exceptions import MessageInvalidError, NetworkConnectionError, RemoteServerError
 from reporting.utilities import getLogger
@@ -43,7 +44,7 @@ class KafkaHTTPOutput(IOutput):
         self.attempts = config.get("attempts", 3)
 
     def push(self, data):
-        if not isinstance(data, list):
+        if not isinstance(data, list) and not isinstance(data, collections.deque):
             data = [data]
         sub=data[0]['schema'].split('.')[0]
         payload = json.dumps(data)
@@ -60,13 +61,15 @@ class KafkaHTTPOutput(IOutput):
             req = urllib2.Request(self.url+"."+sub, payload, self.headers)
             handler = urllib2.urlopen(req)
         except urllib2.HTTPError as e:
-            log.error('response code %d' % e.code)
-            if e.code == 400 or e.code==500:
+            if e.code == 400: # or e.code==500:
+                response = handler.read()
+                log.error('Failed to push data to %s, error code %d, error message: %s' % (self.url+"."+sub, e.code, response))
                 raise MessageInvalidError()
-            else:
+            else:  # 500 or other error
+                log.error('Failed to push data to %s, error code %d' % (self.url+"."+sub, e.code))
                 raise RemoteServerError()
         except urllib2.URLError as e:
-            raise Exception("HTTP error: %s" % e.args)
+            raise Exception("Failed to push data to %s, HTTP error: %s" % (self.url+"."+sub, e.args))
         else:
             # 200
             response = handler.read()
@@ -133,7 +136,10 @@ class BufferOutput(IOutput):
 
     def push(self, data):
         with self.write_lock:
-            self.queue.append(data)
+            if isinstance(data, collections.deque) or isinstance(data, list):
+                self.queue.extend(data)
+            else:
+                self.queue.append(data)
         return True
     
     def execute(self):

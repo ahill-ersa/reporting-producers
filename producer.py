@@ -138,8 +138,18 @@ class ProducerDaemon(Daemon):
             return json.dumps({"producer-config":self.config})
         elif message=="show":
             return json.dumps({"collectors": [c.info() for c in self.__collectors]})
+        elif message=="check":
+            result=[]
+            if 'buffer' in self.__outputs:
+                if not self.__outputs['buffer'].check_dir.is_ok():
+                    result.append("Buffer directory %s is full." % self.__outputs['buffer'].directory)
+            for c in self.__collectors:
+                info=c.info()
+                if not info['is_running']:
+                    result.append("Collector %s has stopped." % info['name'])
+            return json.dumps({"check-result":result})
         elif message=="help":
-            return "{\"system\": \"Command list: config, show\"}"
+            return "{\"system\": \"Command list: config, show, check\"}"
         else:
             return "{\"system\": \"Unknown command. Please run help to get a list of supported commands.\"}"
             
