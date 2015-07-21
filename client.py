@@ -10,7 +10,8 @@ def main(argv):
     csock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     csock.connect(socket_file)
     #print csock
-    print "sending command %s..."%argv[0]
+    if argv[0] != 'check':
+        print "sending command %s..."%argv[0]
     csock.sendall(argv[0]+"\n")
     buffer=[]
     while True:
@@ -40,6 +41,23 @@ def main(argv):
     if 'producer-config' in output:
         print json.dumps(output['producer-config'], indent=4, sort_keys=True)
         sys.exit(0)
+    if 'check-result' in output:
+        if len(argv)>1 and argv[1]=='nagios':
+            if len(output['check-result'])==0:
+                print "Producer OK"
+                sys.exit(0)
+            elif len(output['check-result'])>0:
+                print "Producer WARNING - %s" % ';'.join(output['check-result'])
+                sys.exit(1)
+        else:
+            if len(output['check-result'])==0:
+               print "All good."
+               sys.exit(0)
+            else: 
+               print "check result:"
+               for r in output['check-result']:
+                   print "  %s" % r
+               sys.exit(0)
     pprint.pprint(output)
 
 def print_collectors(collectors):

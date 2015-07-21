@@ -15,6 +15,7 @@ import threading
 import urllib2, urllib
 import base64
 import datetime
+import collections
 
 from reporting.exceptions import MessageInvalidError, NetworkConnectionError, RemoteServerError
 from reporting.utilities import getLogger
@@ -43,8 +44,9 @@ class KafkaHTTPOutput(IOutput):
         self.attempts = config.get("attempts", 3)
 
     def push(self, data):
-        if not isinstance(data, list):
+        if not isinstance(data, list) and not isinstance(data, collections.deque):
             data = [data]
+        sub=data[0]['schema'].split('.')[0]
         payload = json.dumps(data)
         log.debug("push data to http: %s" % payload[:1024])
         base64string = base64.encodestring('%s:%s' % (self.auth[0], self.auth[1])).replace('\n', '')
@@ -56,16 +58,18 @@ class KafkaHTTPOutput(IOutput):
             #auth = urllib2.HTTPBasicAuthHandler(password_manager) # create an authentication handler
             #opener = urllib2.build_opener(auth) # create an opener with the authentication handler
             #urllib2.install_opener(opener) # install the opener... 
-            req = urllib2.Request(self.url, payload, self.headers)
+            req = urllib2.Request(self.url+"."+sub, payload, self.headers)
             handler = urllib2.urlopen(req)
         except urllib2.HTTPError as e:
-            log.error('response code %d' % e.code)
-            if e.code == 400 or e.code==500:
+            if e.code == 400: # or e.code==500:
+                response = handler.read()
+                log.error('Failed to push data to %s, error code %d, error message: %s' % (self.url+"."+sub, e.code, response))
                 raise MessageInvalidError()
-            else:
+            else:  # 500 or other error
+                log.error('Failed to push data to %s, error code %d' % (self.url+"."+sub, e.code))
                 raise RemoteServerError()
         except urllib2.URLError as e:
-            raise Exception("HTTP error: %s" % e.args)
+            raise Exception("Failed to push data to %s, HTTP error: %s" % (self.url+"."+sub, e.args))
         else:
             # 200
             response = handler.read()
@@ -132,7 +136,10 @@ class BufferOutput(IOutput):
 
     def push(self, data):
         with self.write_lock:
-            self.queue.append(data)
+            if isinstance(data, collections.deque) or isinstance(data, list):
+                self.queue.extend(data)
+            else:
+                self.queue.append(data)
         return True
     
     def execute(self):
@@ -146,8 +153,14 @@ class BufferOutput(IOutput):
                 self.log_space_warning=False
                 log.debug("data to save: %s"%data)
                 data_id = data["id"]
-                filename = "%s/%s" % (self.directory, data_id)
-                filename_tmp = "%s/.%s" % (self.directory, data_id)
+                data_dir = self.directory
+                if 'schema' in data:
+                    sub_dir = data['schema'].split('.')[0]
+                    data_dir += os.sep + sub_dir
+                    if not os.path.exists(data_dir):
+                        os.mkdir(data_dir)
+                filename = "%s/%s" % (data_dir, data_id)
+                filename_tmp = "%s/.%s" % (data_dir, data_id)
                 try:
                     with open(filename_tmp, "w") as output:
                         output.write(json.dumps(data))

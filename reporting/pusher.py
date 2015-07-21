@@ -66,33 +66,56 @@ class Pusher(multiprocessing.Process):
             if self.__back_off>0:
                 time.sleep(1)
                 self.__back_off-=1
-            #log.debug("getting files to push...")
-            num_success=0
-            num_invalid=0
-            num_error=0
-            for filename in [name for name in os.listdir(self.directory) if self.uuid_pattern.match(name)]:
-                filename = "%s/%s" % (self.directory, filename)
-                try:
-                    with open(filename, "r") as data:
-                        self.client.push(json.loads(data.read()))
-                    os.remove(filename)
-                    attempt=0
-                    num_success+=1
-                except MessageInvalidError as e:
-                    self.broken(filename)
-                    log.error("error processing %s: %s", filename, str(e))
-                    num_invalid+=1
-                except Exception as e:
-                    attempt+=1
-                    num_error+=1
-                    log.exception("network or remote server error, back off for %d seconds" % self.__back_off)
-                    self.__back_off=min(self.max_backoff, attempt + random.random() * pow(2, attempt))
-                    break
-                if not self.__running:
-                    break
-            num_total=num_success+num_invalid+num_error
-            if num_total>0 and self.__stats_on==True:
-                log.info("Messages total: %d; success: %d; invalid: %d; error: %d" % (num_total,num_success,num_invalid,num_error) )
-            time.sleep(1)
+            else:
+                num_success=0
+                num_invalid=0
+                num_error=0
+                for (path, dirs, files) in os.walk(self.directory):
+                    data_list=[]
+                    data_size=0
+                    filename_list=[]
+                    for i in range(0, len(files)):
+                        filename = os.path.join(path, files[i])
+                        if not self.uuid_pattern.match(files[i]):
+                            continue
+                        try:
+                            with open(filename, "r") as data:
+                                content=data.read()
+                                data_size+=len(content)
+                                data_list.append(json.loads(content))
+                                filename_list.append(filename)
+                        except Exception as e:
+                            log.exception("unable to read file %s" % filename)
+                            pass
+                        if data_size>=self.__batch*1024 or i==len(files)-1:
+                            try:
+                                self.client.push(data_list)
+                            except MessageInvalidError as e:
+                                self.broken(filename)
+                                log.error("error processing %s: %s", filename, str(e))
+                                num_invalid+=1
+                            except Exception as e:
+                                attempt+=1
+                                num_error+=1
+                                log.exception("network or remote server error, back off for %d seconds" % self.__back_off)
+                                self.__back_off=min(self.max_backoff, attempt + random.random() * pow(2, attempt))
+                            if self.__back_off==0:
+                                attempt=0
+                                data_size=0
+                                num_success+=len(data_list)
+                                del data_list[:]
+                                for file_name in filename_list:
+                                    os.remove(file_name)
+                                del filename_list[:]
+                            else:
+                                break
+                        if not self.__running:
+                            break
+                    if self.__back_off>0:
+                        break
+                num_total=num_success+num_invalid+num_error
+                if num_total>0 and self.__stats_on==True:
+                    log.info("Messages total: %d; success: %d; invalid: %d; error: %d" % (num_total,num_success,num_invalid,num_error) )
+                time.sleep(1)
         log.info("Pusher has stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
         

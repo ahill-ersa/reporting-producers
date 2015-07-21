@@ -14,9 +14,11 @@ thresh_crit=85
 BASENAME=`which basename`
 PROGNAME=`$BASENAME $0`
 
+PRODUCER_HOME="/opt/producers"
+
 function print_usage {
    # Print a short usage statement
-   echo "Usage: $PROGNAME -w <limit> -c <limit>"
+   echo "Usage: $PROGNAME -w <limit> -c <limit> -d <home-dir>"
 }
 
 # Parse command line options
@@ -46,6 +48,9 @@ while [ "$1" ]; do
            fi
            [[ "$1" = *-w* ]] && thresh_warn=$thresh || thresh_crit=$thresh
            shift 2
+           ;;
+       -d | --directory)
+           PRODUCER_HOME=$2
            ;;
        -?)
            print_usage
@@ -93,6 +98,13 @@ elif [ "$has_pusher" -eq 1 ] && [ "$num_process" -eq 1 ]; then
 elif [ "$num_process" -eq 0 ]; then
     echo "Producer CRITICAL: producer is not running"
     exit $STATE_CRITICAL
+fi
+
+RESULT_MSG=`$PRODUCER_HOME/client.py check nagios`
+RESULT=$?
+if [ $RESULT -gt 0 ]; then
+    echo $RESULT_MSG
+    exit $RESULT
 fi
 
 eval $(parse_yaml $CONFIG_FILE)
