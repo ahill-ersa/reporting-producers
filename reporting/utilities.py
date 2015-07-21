@@ -10,6 +10,7 @@ import socket
 import datetime
 import platform
 import time
+import os
 from reporting.exceptions import PluginInitialisationError
 
 global_vars=None
@@ -97,3 +98,7 @@ def init_object(class_name, **arguments):
             "Failed to load plugin %s with "
             "the following error: %s - %s" %
             (class_name, exc.__class__.__name__, exc.message))
+
+def touch(fname, times=None):
+    with open(fname, 'a'):
+        os.utime(fname, times)

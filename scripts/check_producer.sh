@@ -15,6 +15,7 @@ BASENAME=`which basename`
 PROGNAME=`$BASENAME $0`
 
 PRODUCER_HOME="/opt/producers"
+BACK_OFF_INDICATOR="/var/run/reporting-producer/back-off"
 
 function print_usage {
    # Print a short usage statement
@@ -107,6 +108,11 @@ if [ $RESULT -gt 0 ]; then
     exit $RESULT
 fi
 
+if [ -f $BACK_OFF_INDICATOR ]; then
+    echo "Producer CRITICAL: Remote server not accessible, backing off"
+    exit $STATE_CRITICAL
+fi
+
 eval $(parse_yaml $CONFIG_FILE)
 
 buffer_dir=$(echo $output__buffer__directory|tr -d '\n'|tr -d '\r')
@@ -114,7 +120,7 @@ buffer_size=$(echo $output__buffer__size|tr -d '\n'|tr -d '\r')
 
 if [ ! -z "$buffer_dir" ] && [ ! -z "$buffer_size" ]; then
     dir_usage=$(du -sm $buffer_dir|cut -f1)
-    if which bc >/dev/null; then
+    if which bc 2>1 >/dev/null; then
         percentage=$(echo "${dir_usage} * 1024 * 100 / ${buffer_size}" | bc)
     else
         percentage=$((${dir_usage} * 1024 * 100 / ${buffer_size}))
