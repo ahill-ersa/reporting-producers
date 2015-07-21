@@ -80,10 +80,10 @@ class Collector(threading.Thread):
         self.__collector_name=collector_name
         self.__config=config
         self.__sleep_time=self.__config['input'].get('frequency',10)
-        schedule=self.__config['input'].get('schedule',None)
+        self.__cron=self.__config['input'].get('schedule',None)
         self.__schedule=None
-        if schedule is not None:
-            self.__schedule=CronEvent(schedule)
+        if self.__cron is not None:
+            self.__schedule=CronEvent(self.__cron)
             log.debug("job scheduled at %s"%self.__schedule.numerical_tab)
         self.__input=None
         self.__parser=None
@@ -146,6 +146,8 @@ class Collector(threading.Thread):
         col_info["sleep_count"]=self.__sleep_count
         col_info["error_count"]=self.__error_count
         col_info["max_error_count"]=self.__max_error_count
+        if self.__cron is not None:
+            col_info["cron"]=self.__cron
         if self.__config['input']['type']=='tailer':
             col_info["tailer"]=self.__input.info(self.__config['input']['path'])
         return col_info

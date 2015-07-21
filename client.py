@@ -62,9 +62,9 @@ def main(argv):
 
 def print_collectors(collectors):
     print "Number of collectors: %d" % len(collectors)
-    template = "{0:25}{1:40}{2:^8}{3:^40}{4:^45}{5:^11}{6:^20}{7:^8}{8:^14}{9:^11}{10:^12}{11:^11}{12:^12}{13:^12}"
+    template = "{0:30}{1:40}{2:^8}{3:^46}{4:^45}{5:^11}{6:^20}{7:^8}{8:^14}{9:^11}{10:^12}{11:^12}"
     print template.format("Name", "Session ID", "Running", "Input", "Parser", "Output", "Schema", "Version", "Msg_Collected", 
-                          "Msg_Failed", "Sleep_Count", "Sleep_Time", "Error_Count", "Max_Errors")
+                          "Msg_Failed", "Scheduled", "Errors")
     print '='*269
     for collector in collectors:
         input=collector['config']['input']['type']
@@ -76,10 +76,14 @@ def print_collectors(collectors):
                 parser=collector['config']['parser']['name']
             else:
                 parser=collector['config']['parser']['type']
+        if 'cron' in collector:
+            scheduled=collector['cron']
+        else:
+            scheduled="%d/%d" % (collector['sleep_count'],collector['sleep_time'])
         print template.format(collector['name'], collector['session_id'], collector['is_running'], input, 
                               parser, collector['config']['output'], collector['config']['metadata']['schema'],collector['config']['metadata']['version'],
-                              collector['number_collected'], collector['number_failed'],collector['sleep_count'], collector['sleep_time'], 
-                              collector['error_count'], collector['max_error_count'])
+                              collector['number_collected'], collector['number_failed'], scheduled, 
+                              "%d/%d" % (collector['error_count'],collector['max_error_count']))
     
 def print_detail(collector, show_full_data):
     template="{0:32}{1:}"

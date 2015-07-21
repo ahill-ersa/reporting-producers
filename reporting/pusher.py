@@ -16,7 +16,7 @@ import datetime
 import signal
 
 import yaml
-from reporting.utilities import getLogger, excepthook
+from reporting.utilities import getLogger, excepthook, touch
 from reporting.exceptions import MessageInvalidError, NetworkConnectionError, RemoteServerError
 
 log = getLogger(__name__)
@@ -27,7 +27,7 @@ class Pusher(multiprocessing.Process):
     ignore = set()
     max_backoff = 2 * 60
 
-    def __init__(self, output, directory, batch=1, stats_on=False):
+    def __init__(self, output, directory, batch=1, stats_on=False, back_off_indicator=None):
         super(Pusher, self).__init__()
         self.client = output
         self.directory = directory
@@ -35,6 +35,7 @@ class Pusher(multiprocessing.Process):
         self.__batch=batch
         self.__back_off=0
         self.__stats_on=stats_on
+        self.__back_off_indicator=back_off_indicator
 
     def __sigTERMhandler(self, signum, frame):
         log.debug("Caught signal %d. Exiting" % signum)
@@ -66,6 +67,9 @@ class Pusher(multiprocessing.Process):
             if self.__back_off>0:
                 time.sleep(1)
                 self.__back_off-=1
+                if self.__back_off==0 and self.__back_off_indicator is not None:
+                    if os.path.exists(self.__back_off_indicator) and os.path.isfile(self.__back_off_indicator):
+                        os.remove(self.__back_off_indicator)
             else:
                 num_success=0
                 num_invalid=0
@@ -97,8 +101,10 @@ class Pusher(multiprocessing.Process):
                             except Exception as e:
                                 attempt+=1
                                 num_error+=1
-                                log.exception("network or remote server error, back off for %d seconds" % self.__back_off)
                                 self.__back_off=min(self.max_backoff, attempt + random.random() * pow(2, attempt))
+                                if self.__back_off_indicator is not None:
+                                    touch(self.__back_off_indicator)
+                                log.exception("network or remote server error, back off for %d seconds" % self.__back_off)
                             if self.__back_off==0:
                                 attempt=0
                                 data_size=0
