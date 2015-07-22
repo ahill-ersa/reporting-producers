@@ -56,10 +56,15 @@ class KeystoneListInput(IDataSource):
         from keystoneclient.v2_0 import client
 
         keystone=client.Client(username=self.__username, password=self.__password, tenant_name=self.__project, auth_url=self.__auth_url)
-        tenants=keystone.tenants.list()
-        for tenant in tenants:
-            data['tenants'].append(tenant._info)
         users=keystone.users.list()
         for user in users:
             data['users'].append(user._info)
+            if 'tenantId' not in user._info:
+                log.debug("user %s doesn't have tenant Id."%user._info['name'])
+        tenants=keystone.tenants.list()
+        for tenant in tenants:
+            tenant_info = tenant._info
+            if tenant_info['description'] and 'personal tenancy' not in tenant_info['description'].lower():
+                tenant_info['users'] = [{ 'id' : user._info['id'], 'username' : user._info['username']} for user in users if 'tenantId' in user._info and user._info['tenantId']==tenant_info['id']]
+            data['tenants'].append(tenant_info)
         return data
