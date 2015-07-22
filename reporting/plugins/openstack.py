@@ -68,3 +68,40 @@ class KeystoneListInput(IDataSource):
                 tenant_info['users'] = [{ 'id' : user._info['id'], 'username' : user._info['username']} for user in users if 'tenantId' in user._info and user._info['tenantId']==tenant_info['id']]
             data['tenants'].append(tenant_info)
         return data
+
+class CinderListInput(IDataSource):
+    def __init__(self, project, username, password, auth_url, number_per_page=500):
+        self.__project=project
+        self.__username=username
+        self.__password=password
+        self.__auth_url=auth_url
+        self.__number_per_page=number_per_page
+    def get_data(self, **kwargs):
+        query_id=str(uuid.uuid4())
+        data_list=[]
+        from cinderclient import client
+        conn=client.Client(2, self.__username, self.__password, self.__project, self.__auth_url)
+        
+        volumes = conn.volumes.list(search_opts={'all_tenants':1}, limit=self.__number_per_page)
+        while len(volumes)>0:
+            log.debug("Got %d volumes, first id %s" % (len(volumes), volumes[0].id))
+            data=init_message()
+            data['query_id']=query_id
+            data['volumes']=[]
+            for volume in volumes:
+                data['volumes'].append(volume._info)
+            data_list.append(data)
+            last_id=volumes[-1].id
+            log.debug("last_id %s" %last_id)
+            volumes = conn.volumes.list(search_opts={'all_tenants':1}, marker=last_id, limit=self.__number_per_page)
+            
+        volume_snapshots = conn.volume_snapshots.list(search_opts={'all_tenants':1})
+        log.debug("Got %d volume_snapshots" % len(volume_snapshots))
+        data=init_message()
+        data['query_id']=query_id
+        data['volume_snapshots']=[]
+        for volume in volume_snapshots:
+            data['volume_snapshots'].append(volume._info)
+        data_list.append(data)
+
+        return data_list
