@@ -103,14 +103,15 @@ fi
 
 RESULT_MSG=`$PRODUCER_HOME/client.py check nagios`
 RESULT=$?
-if [ $RESULT -gt 0 ]; then
-    echo $RESULT_MSG
-    exit $RESULT
-fi
 
 if [ -f $BACK_OFF_INDICATOR ]; then
     echo "Producer CRITICAL: Remote server not accessible, backing off"
     exit $STATE_CRITICAL
+fi
+
+if [ $RESULT -gt 0 ]; then
+    echo $RESULT_MSG
+    exit $RESULT
 fi
 
 eval $(parse_yaml $CONFIG_FILE)

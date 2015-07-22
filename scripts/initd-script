@@ -25,6 +25,7 @@ exec_name="producer.py"
 pidfile=${PIDFILE-/var/run/reporting-producer/reporting-producer.pid}
 socket=${SOCKET-/var/run/reporting-producer/producer.sock}
 RUN_AS="producer"
+BACK_OFF_INDICATOR="/var/run/reporting-producer/back-off"
 
 system=unknown
 if [ -f /etc/redhat-release ]; then
@@ -111,6 +112,9 @@ start() {
     ensure_dir /var/run/reporting-producer $RUN_AS
     ensure_dir /var/lib/reporting-producer $RUN_AS
     ensure_dir /var/log/reporting-producer $RUN_AS
+    if [ -f $BACK_OFF_INDICATOR ]; then
+        rm -f $BACK_OFF_INDICATOR
+    fi
     echo -n $"Starting reporting producer: "
     run_program "${MAINPROG} -c $CONFIG_FILE -p $pidfile -s $socket -b"
     RETVAL=$?
