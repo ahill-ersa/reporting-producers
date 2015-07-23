@@ -336,7 +336,7 @@ collector:
                 username: username
                 password: token
                 auth_url: https://keystone.rc.nectar.org.au:5000/v2.0/
-            frequency: 10
+            frequency: 600
         output: buffer
         metadata:
             schema: nova.list
@@ -350,11 +350,25 @@ collector:
                 username: username
                 password: token
                 auth_url: https://keystone.rc.nectar.org.au:5000/v2.0/
-            frequency: 10
+            frequency: 600
         output: buffer
         metadata:
             schema: keystone.list
             version: 1
+    cinder_list:
+        input:
+            type: class
+            name: reporting.plugins.openstack.CinderListInput
+            arguments:
+                project: tenant-name
+                username: username
+                password: token
+                auth_url: https://keystone.rc.nectar.org.au:5000/v2.0/
+            frequency: 600
+        output: buffer
+        metadata:
+            schema: cinder.list
+            version: 1    
     filesystem_usage_tmp:
         input:
             type: class
@@ -389,6 +403,8 @@ pusher:
     # Local staging directory
     directory: /tmp/producer-cache
     output: kafka-http
+    back_off_indicator: /var/run/reporting-producer/back-off
+    stats_on: True
 
 logging:
     log_level: 3
