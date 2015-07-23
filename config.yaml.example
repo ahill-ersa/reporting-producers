@@ -403,6 +403,8 @@ pusher:
     # Local staging directory
     directory: /tmp/producer-cache
     output: kafka-http
+    back_off_indicator: /var/run/reporting-producer/back-off
+	stats_on: True
 
 logging:
     log_level: 3
