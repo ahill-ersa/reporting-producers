@@ -1,16 +1,16 @@
-class PluginInitialisationError(BaseException):
+class PluginInitialisationError(Exception):
     pass
 
-class NetworkConnectionError(BaseException):
+class NetworkConnectionError(Exception):
     pass
 
-class RemoteServerError(BaseException):
+class RemoteServerError(Exception):
     pass
 
-class MessageInvalidError(BaseException):
+class MessageInvalidError(Exception):
     pass
 
-class InputDataError(BaseException):
+class InputDataError(Exception):
     pass
 
 ##
