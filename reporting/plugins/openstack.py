@@ -29,6 +29,7 @@ class NovaListInput(IDataSource):
             log.debug("Got %d instances, first id %s" % (len(servers), servers[0].id))
             data=init_message()
             data['query_id']=query_id
+            data['flavors']=[f._info for f in conn.flavors.list()]
             data['instances']=[]
             for server in servers:
                 data['instances'].append(server._info)
@@ -59,13 +60,19 @@ class KeystoneListInput(IDataSource):
         users=keystone.users.list()
         for user in users:
             data['users'].append(user._info)
-            if 'tenantId' not in user._info:
-                log.debug("user %s doesn't have tenant Id."%user._info['name'])
         tenants=keystone.tenants.list()
         for tenant in tenants:
             tenant_info = tenant._info
             if tenant_info['description'] and 'personal tenancy' not in tenant_info['description'].lower():
-                tenant_info['users'] = [{ 'id' : user._info['id'], 'username' : user._info['username']} for user in users if 'tenantId' in user._info and user._info['tenantId']==tenant_info['id']]
+                membership_retrieved = False
+                membership_attempt = 0
+                while not membership_retrieved and membership_attempt < 3:
+                    try:
+                        tenant_info['users'] = [{'id' : user.id, 'username' : user.username} for user in tenant.list_users()]
+                        membership_retrieved = True
+                    except:
+                        time.sleep(2 ** membership_attempt)
+                        membership_attempt += 1
             data['tenants'].append(tenant_info)
         return data
 

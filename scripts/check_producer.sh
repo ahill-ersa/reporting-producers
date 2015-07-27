@@ -121,7 +121,7 @@ buffer_size=$(echo $output__buffer__size|tr -d '\n'|tr -d '\r')
 
 if [ ! -z "$buffer_dir" ] && [ ! -z "$buffer_size" ]; then
     dir_usage=$(du -sm $buffer_dir|cut -f1)
-    if which bc 2>1 >/dev/null; then
+    if which bc 2>/dev/null; then
         percentage=$(echo "${dir_usage} * 1024 * 100 / ${buffer_size}" | bc)
     else
         percentage=$((${dir_usage} * 1024 * 100 / ${buffer_size}))
