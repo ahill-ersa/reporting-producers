@@ -67,7 +67,9 @@ class Pusher(multiprocessing.Process):
             if self.__back_off>0:
                 time.sleep(1)
                 self.__back_off-=1
+                #log.debug("backing off %d"%self.__back_off)
                 if self.__back_off==0 and self.__back_off_indicator is not None:
+                    log.debug("backoff finished. going to try again.")
                     if os.path.exists(self.__back_off_indicator) and os.path.isfile(self.__back_off_indicator):
                         os.remove(self.__back_off_indicator)
             else:
@@ -84,7 +86,7 @@ class Pusher(multiprocessing.Process):
                             continue
                         try:
                             with open(filename, "r") as data:
-                                content=data.read()
+                                content=data.read().strip()
                                 data_size+=len(content)
                                 data_list.append(json.loads(content))
                                 filename_list.append(filename)
@@ -93,6 +95,7 @@ class Pusher(multiprocessing.Process):
                             pass
                         if data_size>=self.__batch*1024 or i==len(files)-1:
                             try:
+                                #log.debug("going to push %s"%data_list)
                                 self.client.push(data_list)
                             except MessageInvalidError as e:
                                 self.broken(filename)
@@ -101,14 +104,20 @@ class Pusher(multiprocessing.Process):
                             except Exception as e:
                                 attempt+=1
                                 num_error+=1
-                                self.__back_off=min(self.max_backoff, attempt + random.random() * pow(2, attempt))
+                                self.__back_off=min(self.max_backoff, attempt + int(random.random() * pow(2, attempt)))
+                                log.debug("cleanup after failed")
+                                del data_list[:]
+                                data_size=0
+                                del filename_list[:]
                                 if self.__back_off_indicator is not None:
                                     touch(self.__back_off_indicator)
                                 log.exception("network or remote server error, back off for %d seconds" % self.__back_off)
+                            #log.debug("back_off %d"%self.__back_off)
                             if self.__back_off==0:
                                 attempt=0
                                 data_size=0
                                 num_success+=len(data_list)
+                                log.debug("cleanup after push")
                                 del data_list[:]
                                 for file_name in filename_list:
                                     os.remove(file_name)
@@ -117,7 +126,7 @@ class Pusher(multiprocessing.Process):
                                 break
                         if not self.__running:
                             break
-                    if self.__back_off>0:
+                    if self.__back_off>0 or not self.__running:
                         break
                 num_total=num_success+num_invalid+num_error
                 if num_total>0 and self.__stats_on==True:

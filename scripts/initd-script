@@ -130,7 +130,8 @@ start() {
 
 stop() {
     echo -n $"Stopping reporting producer: "
-    run_program "${MAINPROG} -c $CONFIG_FILE -p $pidfile -s $socket -k"
+    #run_program "${MAINPROG} -c $CONFIG_FILE -p $pidfile -s $socket -k"
+    killproc -p ${pidfile}
     RETVAL=$?
     if [ $RETVAL = 0 ]; then
         rm -f ${lockfile} ${pidfile}
@@ -139,7 +140,8 @@ stop() {
         echo_fail
     fi
     echo
-    return $RETVAL
+    return 0
+    #$RETVAL
 }
 
 status() {
