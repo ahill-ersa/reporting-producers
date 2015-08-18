@@ -25,11 +25,12 @@ class NovaListInput(IDataSource):
         from novaclient import client
         conn=client.Client(2, self.__username, self.__password, self.__project, self.__auth_url)
         servers = conn.servers.list(search_opts={'all_tenants':1}, limit=self.__number_per_page)
+        flavors=[f._info for f in conn.flavors.list(is_public=None)]
         while len(servers)>0:
             log.debug("Got %d instances, first id %s" % (len(servers), servers[0].id))
             data=init_message()
             data['query_id']=query_id
-            data['flavors']=[f._info for f in conn.flavors.list()]
+            data['flavors']=flavors
             data['instances']=[]
             for server in servers:
                 data['instances'].append(server._info)
