@@ -140,8 +140,7 @@ stop() {
         echo_fail
     fi
     echo
-    return 0
-    #$RETVAL
+    return $RETVAL
 }
 
 status() {
