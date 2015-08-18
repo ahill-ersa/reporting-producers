@@ -48,7 +48,7 @@ class KafkaHTTPOutput(IOutput):
             data = [data]
         sub=data[0]['schema'].split('.')[0]
         payload = json.dumps(data)
-        log.debug("push data to http: %s" % payload[:1024])
+        log.debug("pushing data to http: %s" % payload[:1024])
         base64string = base64.encodestring('%s:%s' % (self.auth[0], self.auth[1])).replace('\n', '')
         self.headers['Authorization'] = "Basic %s" % base64string
         try:

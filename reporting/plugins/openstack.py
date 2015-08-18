@@ -9,6 +9,9 @@ import json
 import time
 import copy
 import uuid
+import random
+from multiprocessing.pool import ThreadPool
+import requests
 
 log = getLogger(__name__)
 
@@ -113,3 +116,52 @@ class CinderListInput(IDataSource):
         data_list.append(data)
 
         return data_list
+
+class SwiftUsageInput(IDataSource):
+    def __init__(self, project, username, password, auth_url, ring_location="/etc/swift/account.ring.gz"):
+        self.__project=project
+        self.__username=username
+        self.__password=password
+        self.__auth_url=auth_url
+        self.__ring_location=ring_location
+        self.__ring=None
+    def get_data(self, **kwargs):
+        query_id=str(uuid.uuid4())
+        data_list=[]
+        from keystoneclient.v2_0 import client
+        from swift.common.ring import Ring
+        keystone=client.Client(username=self.__username, password=self.__password, tenant_name=self.__project, auth_url=self.__auth_url)
+        self.__ring = Ring(self.__ring_location)
+        tenants = [tenant.id for tenant in keystone.tenants.list()]
+        random.shuffle(tenants)
+        data=init_message()
+        for tenant, stats in zip(tenants, ThreadPool().map(self.fetch, tenants)):
+            if stats is not None:
+                data[tenant] = stats
+        return data
+        
+    def fetch(self, tenant):
+        account = "AUTH_%s" % tenant
+        partition = self.__ring.get_part(account, None, None)
+        nodes = self.__ring.get_part_nodes(partition)
+        random.shuffle(nodes)
+        for node in nodes:
+            url = "http://%s:%s/%s/%s/%s" % (node["ip"], node["port"], node["device"], partition, account)
+            try:
+                response = requests.head(url, timeout=5)
+                if response.status_code == 204:
+                    return {
+                        "containers" : int(response.headers["x-account-container-count"]),
+                        "objects" : int(response.headers["x-account-object-count"]),
+                        "bytes" : int(response.headers["x-account-bytes-used"]),
+                        "quota" : int(response.headers["x-account-meta-quota-bytes"]) if "x-account-meta-quota-bytes" in response.headers else None
+                    }
+                elif response.status_code == 404:
+                    return None
+                else:
+                    log.warning("error fetching %s [HTTP %s]", url, response.status_code)
+            except:
+                log.warning("error fetching %s", url, exc_info=True)
+        log.error("failed to fetch info for tenant %s", tenant)
+        return None
+    
