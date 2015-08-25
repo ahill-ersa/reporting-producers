@@ -404,6 +404,7 @@ output:
         url: https://collector.dyn.ersa.edu.au:3772/v1/topic/emu
         username: test
         token: test
+        timeout: 10
     # local cache that holds data temporarily before pushing to server
     buffer:
         directory: /mnt/producer/cache
