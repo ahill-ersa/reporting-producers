@@ -42,6 +42,7 @@ class KafkaHTTPOutput(IOutput):
         self.url = config["url"]
         self.auth = (config["username"], config["token"])
         self.attempts = config.get("attempts", 3)
+        self.timeout = config.get("timeout", 10)
 
     def push(self, data):
         if not isinstance(data, list) and not isinstance(data, collections.deque):
@@ -59,7 +60,7 @@ class KafkaHTTPOutput(IOutput):
             #opener = urllib2.build_opener(auth) # create an opener with the authentication handler
             #urllib2.install_opener(opener) # install the opener... 
             req = urllib2.Request(self.url+"."+sub, payload, self.headers)
-            handler = urllib2.urlopen(req)
+            handler = urllib2.urlopen(req, timeout=self.timeout)
         except urllib2.HTTPError as e:
             if e.code == 400: # or e.code==500:
                 response = handler.read()
