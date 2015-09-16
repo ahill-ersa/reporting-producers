@@ -135,9 +135,10 @@ class SwiftUsageInput(IDataSource):
         tenants = [tenant.id for tenant in keystone.tenants.list()]
         random.shuffle(tenants)
         data=init_message()
+        data["swift"] = {}
         for tenant, stats in zip(tenants, ThreadPool().map(self.fetch, tenants)):
             if stats is not None:
-                data[tenant] = stats
+                data["swift"][tenant] = stats
         return data
         
     def fetch(self, tenant):
