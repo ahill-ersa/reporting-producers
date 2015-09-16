@@ -182,7 +182,7 @@ class Collector(threading.Thread):
                         no_msgs=len(data)
                         for line in data:
                             log.debug("raw data %s"%line)
-                            payload.append(self.generate_payload(line))
+                            payload.append(self.generate_payload(str(line.decode('ASCII','ignore'))))
                         if len(payload)>0:
                             self.__output.push(payload)
                         else:
@@ -190,7 +190,7 @@ class Collector(threading.Thread):
                     else:
                         self.__current_data=data
                         log.debug("raw data %s"%data)
-                        payload=self.generate_payload(data)
+                        payload=self.generate_payload(str(data.decode('ASCII','ignore')))
                         self.__output.push(payload)
                 except:
                     self.__current_data=data

@@ -36,10 +36,15 @@ class Pusher(multiprocessing.Process):
         self.__back_off=0
         self.__stats_on=stats_on
         self.__back_off_indicator=back_off_indicator
+        self.__show_log=False
 
     def __sigTERMhandler(self, signum, frame):
         log.debug("Caught signal %d. Exiting" % signum)
         self.quit()
+
+    def __sigUSER1handler(self, signum, frame):
+        log.info("Caught signal %d. flip self.__show_log" % signum)
+        self.__show_log=not self.__show_log
         
     def quit(self):
         self.__running=False
@@ -59,6 +64,7 @@ class Pusher(multiprocessing.Process):
         # Install signal handlers
         signal.signal(signal.SIGTERM, self.__sigTERMhandler)
         signal.signal(signal.SIGINT, self.__sigTERMhandler)
+        signal.signal(signal.SIGUSR1, self.__sigUSER1handler)
         # Ensure unhandled exceptions are logged
         sys.excepthook = excepthook
         log.info("Pusher has started at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
@@ -129,7 +135,7 @@ class Pusher(multiprocessing.Process):
                     if self.__back_off>0 or not self.__running:
                         break
                 num_total=num_success+num_invalid+num_error
-                if num_total>0 and self.__stats_on==True:
+                if num_total>0 and (self.__stats_on==True or self.__show_log==True):
                     log.info("Messages total: %d; success: %d; invalid: %d; error: %d" % (num_total,num_success,num_invalid,num_error) )
                 time.sleep(1)
         log.info("Pusher has stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
