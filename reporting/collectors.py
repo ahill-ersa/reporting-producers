@@ -177,7 +177,7 @@ class Collector(threading.Thread):
                 try:
                     data=self.__input.get_data(**args)
                     if isinstance(data, collections.deque) or isinstance(data, list):
-                        self.__current_data=[l for l in data]
+                        self.__current_data=[l.decode('ASCII','ignore') for l in data]
                         payload=[]
                         no_msgs=len(data)
                         for line in data:
