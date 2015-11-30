@@ -77,9 +77,12 @@ def process(dom, nova_network):
         write_kb += stats[index["write"]] / 1024
 
     for interface in get_network_devices(dom):
-        stats = dom.interfaceStats(interface)
-        transmit_kb += stats[index["transmit"]] / 1024
-        receive_kb += stats[index["receive"]] / 1024
+        try:
+            stats = dom.interfaceStats(interface)
+            transmit_kb += stats[index["transmit"]] / 1024
+            receive_kb += stats[index["receive"]] / 1024
+        except:
+            log.error("can't get %s, maybe it doesn't exist"%dom)
 
     instance = {
             "id" : dom.UUIDString(),
