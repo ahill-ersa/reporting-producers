@@ -42,7 +42,7 @@ class KafkaHTTPOutput(IOutput):
         self.url = config["url"]
         self.auth = (config["username"], config["token"])
         self.attempts = config.get("attempts", 3)
-        self.timeout = config.get("timeout", 10)
+        self.timeout = config.get("timeout", 50)
 
     def push(self, data):
         if not isinstance(data, list) and not isinstance(data, collections.deque):
@@ -59,17 +59,19 @@ class KafkaHTTPOutput(IOutput):
             #auth = urllib2.HTTPBasicAuthHandler(password_manager) # create an authentication handler
             #opener = urllib2.build_opener(auth) # create an opener with the authentication handler
             #urllib2.install_opener(opener) # install the opener... 
+            start_time=time.time()
             req = urllib2.Request(self.url+"."+sub, payload, self.headers)
             handler = urllib2.urlopen(req, timeout=self.timeout)
         except urllib2.HTTPError as e:
             if e.code == 400: # or e.code==500:
-                response = handler.read()
+                response = handler.read() if handler else ""
                 log.error('Failed to push data to %s, error code %d, error message: %s' % (self.url+"."+sub, e.code, response))
                 raise MessageInvalidError()
             else:  # 500 or other error
                 log.error('Failed to push data to %s, error code %d' % (self.url+"."+sub, e.code))
                 raise RemoteServerError()
         except urllib2.URLError as e:
+            log.error("spent %d second to push %d bytes"%(time.time()-start_time, len(payload)))
             raise Exception("Failed to push data to %s, HTTP error: %s" % (self.url+"."+sub, e.args))
         else:
             # 200

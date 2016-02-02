@@ -127,31 +127,33 @@ class AccountingLogParser(IParser):
     
         for attr in tokens[3].split():
             kv = attr.split("=")
-            if reduce(lambda x, y: x and y, [str.isdigit(_) for _ in kv[1]]):
-                kv[1] = int(kv[1])
-            elif kv[0] == "exec_host":
-                hosts = {}
-                for slot in kv[1].split("+"):
-                    slot = slot.split("/")
-                    if slot[0] not in hosts:
-                        hosts[slot[0]] = []
-                    if slot[1].isdigit():
-                        hosts[slot[0]].append(int(slot[1]))
-                    elif '-' in slot[1]:
-                        start_end=slot[1].split('-')
-                        hosts[slot[0]].extend(range(int(start_end[0]), int(start_end[1])+1))
-                kv[1] = hosts
-            elif kv[0] == "owner":
-                kv[1] = kv[1].split("@")[0]
+            try:     
+                if reduce(lambda x, y: x and y, [str.isdigit(_) for _ in kv[1]]):
+                    kv[1] = int(kv[1])
+                elif kv[0] == "exec_host":
+                    hosts = {}
+                    for slot in kv[1].split("+"):
+                        slot = slot.split("/")
+                        if slot[0] not in hosts:
+                            hosts[slot[0]] = []
+                        if slot[1].isdigit():
+                            hosts[slot[0]].append(int(slot[1]))
+                        elif '-' in slot[1]:
+                            start_end=slot[1].split('-')
+                            hosts[slot[0]].extend(range(int(start_end[0]), int(start_end[1])+1))
+                    kv[1] = hosts
+                elif kv[0] == "owner":
+                    kv[1] = kv[1].split("@")[0]
+                if "." in kv[0]:
+                    kv[0] = kv[0].split(".")
     
-            if "." in kv[0]:
-                kv[0] = kv[0].split(".")
-    
-            if isinstance(kv[0], str):
-                data[kv[0]] = kv[1]
-            elif isinstance(kv[0], list):
-                list_to_dict(data, kv[0], kv[1])
-    
+                if isinstance(kv[0], str):
+                    data[kv[0]] = kv[1]
+                elif isinstance(kv[0], list):
+                    list_to_dict(data, kv[0], kv[1])
+            except Exception as ERROR:
+                log.debug(ERROR)
+                pass
         return data
 
 class AccountingCsvOutput(IOutput):
