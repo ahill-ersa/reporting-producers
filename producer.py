@@ -37,11 +37,11 @@ class ProducerDaemon(Daemon):
         self.__buffer_thread=None
         self.__collectors=[]
         self.__asyncServer = AsyncServer(self)
-        
+
     def __sigTERMhandler(self, signum, frame):
         log.debug("Caught signal %d. Exiting" % signum)
         self.quit()
-        
+
     def quit(self):
         self.__asyncServer.stop()
         for c in self.__collectors:
@@ -83,7 +83,6 @@ class ProducerDaemon(Daemon):
                 if 'arguments' in cfg:
                     arguments=cfg['arguments']
                 self.__outputs[n]=init_object(cfg['class'], **arguments)
-
         if 'pusher' in config:
             if not 'directory' in config['pusher'] or not 'output' in config['pusher']:
                 print("ERROR: need to speficity directory and output in pusher.")
@@ -91,7 +90,7 @@ class ProducerDaemon(Daemon):
         if 'tailer' in config:
             self.__tailer=Tailer(config['tailer'])
         return True
-        
+
     def run(self):
         # Install signal handlers
         signal.signal(signal.SIGTERM, self.__sigTERMhandler)
@@ -132,7 +131,7 @@ class ProducerDaemon(Daemon):
             if c.is_alive():
                 c.join()
         log.info("Reporting producer stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-    
+
     def console(self, message):
         if message=="config":
             return json.dumps({"producer-config":self.config})
@@ -152,7 +151,7 @@ class ProducerDaemon(Daemon):
             return "{\"system\": \"Command list: config, show, check\"}"
         else:
             return "{\"system\": \"Unknown command. Please run help to get a list of supported commands.\"}"
-            
+
 def usage():
     """ Prints reporting producer command line options and exits
     """
@@ -170,7 +169,7 @@ def usage():
     print "    -c <FILE>            configuration file path. default: config.yaml"
     print "    -h, --help           display this help message"
     print "    -V, --version        print the version"
-    
+
 if __name__ == "__main__":
     try:
         (opts, getopts) = getopt.getopt(sys.argv[1:], 'bfvp:s:c:khV',
@@ -207,27 +206,30 @@ if __name__ == "__main__":
             verbose += 1
         if opt in ('-V', '--version'):
             print "Reporting Producer version:", version
-            sys.exit(0)    
-    
+            sys.exit(0)
+
     if not os.path.exists(config_file) or not os.path.isfile(config_file):
         print "Config file %s does not exist or is not a file." % config_file
         sys.exit(1)
-        
+
     config = yaml.load(open(config_file, "r"))
     producer = ProducerDaemon(pid_file, socket_file, config)
+    # FIXME: if multiple loggers is needed, config file should have more configable items
     if 'logging' in config:
         if 'log_level' in config['logging']:
             log.setLevel(get_log_level(config['logging']['log_level']))
+        if 'log_format' in config['logging']:
+            log_format = config['logging']['log_format']
+        else:
+            log_format = '%(asctime)s - %(levelname)s - %(processName)s - %(threadName)s - %(message)s'
+        log_formatter = logging.Formatter(log_format)
         if daemon==False:
             # Add the default logging handler to dump to stderr
             logout = logging.StreamHandler(sys.stderr)
-            # set a format which is simpler for console use
-            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(processName)s - %(threadName)s - %(message)s')
             # tell the handler to use this format
-            logout.setFormatter(formatter)
+            logout.setFormatter(log_formatter)
             log.addHandler(logout)
         elif daemon==True and killing==False:
-            log_formatter = logging.Formatter(config['logging']['log_format'])
             file_handler = None
             if 'log_max_size' in config['logging']:
                 file_handler = logging.handlers.RotatingFileHandler(
@@ -242,7 +244,7 @@ if __name__ == "__main__":
                     # Python 2.5 doesn't support WatchedFileHandler
                     file_handler = logging.handlers.RotatingFileHandler(
                                                 config['logging']['log_location'],)
-    
+
             file_handler.setFormatter(log_formatter)
             log.addHandler(file_handler)
     if verbose>0:
