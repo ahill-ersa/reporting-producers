@@ -21,7 +21,7 @@ class Tailer(IDataSource):
         self.__check_new_file_interval=config.get('check_new_file_interval', 10)
         self.__tracker={}
         self.__init_tracker()
-        
+
     def __init_tracker(self):
         conn = None
         try:
@@ -45,13 +45,13 @@ class Tailer(IDataSource):
         finally:
             if conn:
                 conn.close()
-    
+
     def __update_tracker(self, path):
         conn = None
         try:
             conn = sqlite3.connect(self.__db_path)
-            conn.execute("INSERT OR REPLACE INTO tail_tracker VALUES ('%s', %d, '%s', %d, %d, %d)" % 
-                         (path, self.__tracker[path]['inode'], self.__tracker[path]['filename'], self.__tracker[path]['mtime'], 
+            conn.execute("INSERT OR REPLACE INTO tail_tracker VALUES ('%s', %d, '%s', %d, %d, %d)" %
+                         (path, self.__tracker[path]['inode'], self.__tracker[path]['filename'], self.__tracker[path]['mtime'],
                           self.__tracker[path]['size'], self.__tracker[path]['line_count']))
             conn.commit()
         except Exception as e:
@@ -61,9 +61,9 @@ class Tailer(IDataSource):
         finally:
             if conn:
                 conn.close()
-                
+
     def info(self, path):
-        return {'path':path, 'inode':self.__tracker[path]['inode'], 'filename':self.__tracker[path]['filename'], 'mtime':self.__tracker[path]['mtime'], 
+        return {'path':path, 'inode':self.__tracker[path]['inode'], 'filename':self.__tracker[path]['filename'], 'mtime':self.__tracker[path]['mtime'],
                           'size':self.__tracker[path]['size'], 'line_count':self.__tracker[path]['line_count']}
 
     def find_new_file(self, path):
@@ -86,10 +86,10 @@ class Tailer(IDataSource):
                 log.error("No file found for path %s"%path)
                 return
             log.info("open newest file, stat %s"%file_list[-1])
-            self.__tracker[path]={"inode":file_list[-1]['inode'], 
-                                    "filename":file_list[-1]['filename'], 
-                                    "mtime": file_list[-1]['mtime'], 
-                                    "size": file_list[-1]['size'], 
+            self.__tracker[path]={"inode":file_list[-1]['inode'],
+                                    "filename":file_list[-1]['filename'],
+                                    "mtime": file_list[-1]['mtime'],
+                                    "size": file_list[-1]['size'],
                                     "line_count": 0,
                                     "file_handle": open(file_list[-1]['filename'], 'r')}
             need_to_update=True
@@ -127,40 +127,40 @@ class Tailer(IDataSource):
         if need_to_update:
             self.__update_tracker(path)
 
-    def query_files(self, path):            
+    def query_files(self, path):
         file_list=[]
         for file in glob.glob(path):
             file_st=os.stat(file)
             file_list.append({'filename': file, "inode": file_st.st_ino, "mtime": int(file_st.st_mtime), "size": file_st.st_size})
         file_list.sort(key=lambda file: (file['mtime'], file['filename']))
         return file_list
-    
+
     def add_new_tracker(self, path, collect_history_data=False):
         file_list=self.query_files(path)
         if len(file_list)==0:
             return
         if collect_history_data:
             log.debug("current file stat %s"%file_list[0])
-            self.__tracker[path]={"inode":file_list[0]['inode'], 
-                                            "filename":file_list[0]['filename'], 
-                                            "mtime": file_list[0]['mtime'], 
-                                            "size": file_list[0]['size'], 
+            self.__tracker[path]={"inode":file_list[0]['inode'],
+                                            "filename":file_list[0]['filename'],
+                                            "mtime": file_list[0]['mtime'],
+                                            "size": file_list[0]['size'],
                                             "line_count": 0,
                                             "file_handle": open(file_list[0]['filename'], 'r')}
         else:
             log.debug("current file stat %s"%file_list[-1])
             file_handle=open(file_list[-1]['filename'], 'r')
-            self.__tracker[path]={"inode":file_list[-1]['inode'], 
-                                            "filename":file_list[-1]['filename'], 
-                                            "mtime": file_list[-1]['mtime'], 
-                                            "size": file_list[-1]['size'], 
+            self.__tracker[path]={"inode":file_list[-1]['inode'],
+                                            "filename":file_list[-1]['filename'],
+                                            "mtime": file_list[-1]['mtime'],
+                                            "size": file_list[-1]['size'],
                                             "line_count": self.count_line_number(file_handle),
                                             "file_handle": file_handle}
         self.__update_tracker(path)
-        
-        
+
+
     def get_data(self, config=None):
-        log.debug(config)
+        log.debug("Input config: %s", config)
         if config is None or not 'path' in config:
             log.error("config is none or doesn't have path: %s" % config)
             return None
@@ -194,7 +194,7 @@ class Tailer(IDataSource):
         lines = self.get_lines(self.__tracker[path]['file_handle'])
         self.__tracker[path]['cache']=lines
         return lines
-    
+
     def success(self, config):
         if config is None:
             return
@@ -204,13 +204,13 @@ class Tailer(IDataSource):
         del self.__tracker[path]['cache']
         self.__tracker[path]['line_count']=self.__tracker[path]['line_count']+no_lines
         self.__update_tracker(path)
-    
+
     def fail(self, config):
         if config is None:
             return
         path=config['path']
         log.debug("failed to send log for %s, try again later" % path)
-    
+
     def get_lines(self, file):
         lines_got=0
         lines=collections.deque([])
@@ -234,7 +234,7 @@ class Tailer(IDataSource):
             if current_line>=line_number:
                 break
         log.debug("file %s is at line %d (position %d)" % (file.name, current_line, file.tell()))
-    
+
     def count_line_number(self, file):
         line_number=0
         while True:

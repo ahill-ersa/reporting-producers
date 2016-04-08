@@ -18,10 +18,10 @@ class MomLogParser(IParser):
         data={}
         data["timestamp"] = int(time.mktime(time.strptime(tokens[0], "%m/%d/%Y %H:%M:%S")))
         data["hostname"] = get_hostname()
-    
+
         event_type = tokens[3]
         data['event_type']=event_type
-    
+
         if event_type == "svr":
             data['svr_type']=tokens[4]
             data['event_description']=tokens[5]
@@ -38,10 +38,10 @@ class ServerLogParser(IParser):
         data={}
         data["timestamp"] = int(time.mktime(time.strptime(tokens[0], "%m/%d/%Y %H:%M:%S")))
         data["hostname"] = get_hostname()
-    
+
         event_type = tokens[3]
         data['event_type']=event_type
-    
+
         if event_type == "req":
             if len(tokens[4])>0:
                 data['req_type']=tokens[4]
@@ -85,7 +85,7 @@ class ServerLogParser(IParser):
                             stat[0] = stat[0].split(".")
                         if reduce(lambda x, y: x and y, [str.isdigit(_) for _ in stat[1]]):
                             stat[1] = int(stat[1])
-        
+
                         if isinstance(stat[0], str):
                             data["stats"][stat[0]] = stat[1]
                         elif isinstance(stat[0], list):
@@ -101,33 +101,36 @@ class ServerLogParser(IParser):
                         data["attributes"][kv[0].replace(" ", "_")] = kv[1]
                         if "owner" in data["attributes"]:
                             data["attributes"]["owner"] = data["attributes"]["owner"].split("@")[0]
-    
+
         return data
 
 class AccountingLogParser(IParser):
-    def parse(self, data):
-        tokens = [x.lower().strip() for x in data.split(";")]
-        data={}
+    JOB_STATES = {
+        "r" : "run",
+        "s" : "started",
+        "q" : "queued",
+        "e" : "exited",
+        "d" : "deleted"
+    }
+
+    def parse(self, line):
+        data = {}
+
+        tokens = [x.lower().strip() for x in line.split(";")]
+
         data["timestamp"] = int(time.mktime(time.strptime(tokens[0], "%m/%d/%Y %H:%M:%S")))
         data["hostname"] = get_hostname()
-    
-        job_states = {
-            "r" : "run",
-            "s" : "started",
-            "q" : "queued",
-            "e" : "exited",
-            "d" : "deleted"
-        }
-        for state in job_states:
+
+        for state in self.JOB_STATES:
             if state == tokens[1]:
-                data["state"] = job_states[state]
+                data["state"] = self.JOB_STATES[state]
                 break
-        
+
         data["jobid"] = tokens[2]
-    
+
         for attr in tokens[3].split():
             kv = attr.split("=")
-            try:     
+            try:
                 if reduce(lambda x, y: x and y, [str.isdigit(_) for _ in kv[1]]):
                     kv[1] = int(kv[1])
                 elif kv[0] == "exec_host":
@@ -146,14 +149,14 @@ class AccountingLogParser(IParser):
                     kv[1] = kv[1].split("@")[0]
                 if "." in kv[0]:
                     kv[0] = kv[0].split(".")
-    
+
                 if isinstance(kv[0], str):
                     data[kv[0]] = kv[1]
                 elif isinstance(kv[0], list):
                     list_to_dict(data, kv[0], kv[1])
-            except Exception as ERROR:
-                log.debug(ERROR)
-                pass
+            except Exception as e:
+                log.debug("error: %s, attrb = %s", e, attr)
+
         return data
 
 class AccountingCsvOutput(IOutput):
@@ -161,7 +164,7 @@ class AccountingCsvOutput(IOutput):
         self.__path = path
         self.__handle=open(self.__path, "w")
         self.__data={}
-        
+
     def push(self, data):
         if not isinstance(data, list):
             data = [data]
@@ -183,7 +186,7 @@ class AccountingCsvOutput(IOutput):
         for k,v in self.__data.iteritems():
             self.__handle.write("%s,%d,%.2f"%(k,v['num_jobs'],v['hours']) + os.linesep)
         self.__handle.flush()
-        
+
     def close(self):
         log.debug("closing file handle for %s" % self.__path)
         if self.__handle:

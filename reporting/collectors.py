@@ -10,6 +10,7 @@ import uuid
 import json
 import collections
 import urllib2, urllib
+from os.path import expanduser
 
 from reporting.parsers import MatchParser, SplitParser, DummyParser, JsonGrepParser
 from reporting.utilities import getLogger, get_hostname, init_object
@@ -32,16 +33,19 @@ class CommandRunner(IDataSource):
         output = ''.join(pipe.readlines()).strip()
         process.wait()
         return output
-    
+
 class FileReader(IDataSource):
     def __init__(self, path):
-        self.__path=path
+        if path.startswith("~"):
+            path = expanduser(path)
+        self.__path = path
+
     def get_data(self, **kwargs):
-        log.debug("reading file %s"%self.__path)
+        log.debug("Reading file %s" % self.__path)
         with open(self.__path) as f:
             content = ''.join(f.readlines()).strip()
         return content
-    
+
 class HTTPReader(IDataSource):
     def __init__(self, url, headers={}, auth=None):
         self.__url=url
@@ -52,11 +56,11 @@ class HTTPReader(IDataSource):
             if self.__auth:
                 password_manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
                 password_manager.add_password(None, self.__url, self.__auth['username'], self.__auth['password'])
-                
+
                 auth = urllib2.HTTPBasicAuthHandler(password_manager) # create an authentication handler
                 opener = urllib2.build_opener(auth) # create an opener with the authentication handler
-                urllib2.install_opener(opener) # install the opener... 
-            
+                urllib2.install_opener(opener) # install the opener...
+
             req = urllib2.Request(self.__url, None, self.__headers)
             handler = urllib2.urlopen(req)
         except urllib2.HTTPError as e:
@@ -75,7 +79,7 @@ class HTTPReader(IDataSource):
             return response
 
 class Collector(threading.Thread):
-    def __init__(self, collector_name, config, output, tailer):
+    def __init__(self, collector_name, config, output, tailer=None):
         threading.Thread.__init__(self, name=collector_name)
         self.__collector_name=collector_name
         self.__config=config
@@ -88,6 +92,7 @@ class Collector(threading.Thread):
         self.__input=None
         self.__parser=None
         self.__output=output
+
         if self.__config['input']['type']=='command':
             self.__input=CommandRunner(self.__config['input']['source'])
         elif self.__config['input']['type']=='file':
@@ -105,7 +110,13 @@ class Collector(threading.Thread):
                 arguments=self.__config['input']['arguments']
             self.__input=init_object(self.__config['input']['name'], **arguments)
         elif self.__config['input']['type']=='tailer':
+            if tailer is None:
+                raise AttributeError("Missing tailer in config file for tailer type input")
             self.__input=tailer
+
+        print(self.__input)
+        assert(self.__input)
+
         if 'parser' in self.__config:
             if self.__config['parser']['type']=='match':
                 self.__parser=MatchParser(self.__config['parser']['pattern'].strip(), self.__config['parser']['transform'].strip())
@@ -132,10 +143,10 @@ class Collector(threading.Thread):
         self.__sleep_count=0
         self.__error_count=0
         self.__last_check_minute=-1
-        
+
     def quit(self):
         self.__running=False
-        
+
     def info(self):
         col_info={"name":self.__collector_name, "config":self.__config, "sleep_time": self.__sleep_time}
         col_info["session_id"]=self.__session_id
@@ -151,7 +162,7 @@ class Collector(threading.Thread):
         if self.__config['input']['type']=='tailer':
             col_info["tailer"]=self.__input.info(self.__config['input']['path'])
         return col_info
-    
+
     def match_time(self):
         """Return True if this event should trigger at the specified datetime"""
         if self.__schedule is None:
@@ -162,20 +173,20 @@ class Collector(threading.Thread):
         self.__last_check_minute=t.minute
         log.debug("check if cron job can be triggered. %d"%self.__last_check_minute)
         return self.__schedule.check_trigger((t.year,t.month,t.day,t.hour,t.minute))
-        
+
     def run(self):
         count=self.__sleep_time
         error_count=0
-        log.info("collector %s has started."%self.__collector_name)
+        log.info("Collector %s has started."%self.__collector_name)
         while self.__running:
             args={'config': self.__config['input']}
             if (self.__schedule is None and count==self.__sleep_time) or self.match_time():
-                log.debug("going to collect data.")
-                count=0
-                data=None
-                no_msgs=1
+                log.debug("Starting to collect data.")
+                count = 0
+                data = None
+                no_msgs = 1
                 try:
-                    data=self.__input.get_data(**args)
+                    data = self.__input.get_data(**args)
                     if isinstance(data, collections.deque) or isinstance(data, list):
                         self.__current_data=[l.decode('ASCII','ignore') for l in data]
                         payload=[]
@@ -188,20 +199,20 @@ class Collector(threading.Thread):
                         else:
                             continue
                     else:
-                        self.__current_data=data
-                        log.debug("raw data %s"%data)
-                        payload=self.generate_payload(str(data.decode('ASCII','ignore')))
+                        self.__current_data = data
+                        log.debug("Raw data %s" % data)
+                        payload = self.generate_payload(str(data.decode('ASCII','ignore')))
                         self.__output.push(payload)
                 except:
-                    self.__current_data=data
-                    log.exception('unable to get or parse data. data: %s'%data)
-                    error_count+=1
-                    if self.__max_error_count>0 and error_count>=self.__max_error_count:
-                        self.__running=False
-                        self.__error_count==error_count
+                    self.__current_data = data
+                    log.exception('Unable to get or parse data. data: %s' % data)
+                    error_count += 1
+                    if self.__max_error_count > 0 and error_count >= self.__max_error_count:
+                        self.__running = False
+                        self.__error_count == error_count
                         break
-                    self.__number_failed+=no_msgs
-                    if self.__config['input']['type']=='tailer':
+                    self.__number_failed += no_msgs
+                    if self.__config['input']['type'] == 'tailer':
                         self.__input.fail(**args)
                 else:
                     error_count=0
@@ -212,11 +223,13 @@ class Collector(threading.Thread):
             else:
                 time.sleep(1)
                 if self.__schedule is None:
-                    count+=1
-            self.__sleep_count=count
+                    count += 1
+
+            self.__sleep_count = count
+
         self.__output.close()
-        log.info("collector %s has stopped."%self.__collector_name)
-        
+        log.info("Collector %s has stopped." % self.__collector_name)
+
     def generate_payload(self, data):
         if self.__parser:
             data=self.__parser.parse(data)
@@ -228,4 +241,4 @@ class Collector(threading.Thread):
                 payload[m]=self.__config['metadata'][m]
         log.debug("payload to push: %s"%payload)
         return payload
-        
+

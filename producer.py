@@ -33,7 +33,7 @@ class ProducerDaemon(Daemon):
         self.config=config
         self.__outputs={}
         self.__pusher_pid=-1
-        self.__tailer=None
+        self.__tailer = None
         self.__buffer_thread=None
         self.__collectors=[]
         self.__asyncServer = AsyncServer(self)
@@ -61,6 +61,7 @@ class ProducerDaemon(Daemon):
         if 'global' in config:
             global_vars=config['global']
             set_global(global_vars)
+
         for n,cfg in config['output'].iteritems():
             if n=='buffer':
                 if not 'directory' in cfg:
@@ -83,12 +84,15 @@ class ProducerDaemon(Daemon):
                 if 'arguments' in cfg:
                     arguments=cfg['arguments']
                 self.__outputs[n]=init_object(cfg['class'], **arguments)
+
         if 'pusher' in config:
             if not 'directory' in config['pusher'] or not 'output' in config['pusher']:
                 print("ERROR: need to speficity directory and output in pusher.")
                 return False
+
         if 'tailer' in config:
             self.__tailer=Tailer(config['tailer'])
+
         return True
 
     def run(self):
@@ -108,9 +112,11 @@ class ProducerDaemon(Daemon):
             self.__buffer_thread=BufferThread(self.__outputs['buffer'])
         if 'collector' in config:
             for collector_config in config['collector']:
-                log.debug("initiating collector %s"%collector_config)
-                log.debug("self.__outputs %s"%self.__outputs)
-                c=Collector(collector_config, config['collector'][collector_config], self.__outputs[config['collector'][collector_config]['output']], self.__tailer)
+                log.debug("Initiating collector %s" % collector_config)
+                log.debug("self.__outputs: %s" % self.__outputs)
+                c = Collector(collector_config, config['collector'][collector_config],
+                              self.__outputs[config['collector'][collector_config]['output']],
+                              self.__tailer)
                 self.__collectors.append(c)
         for c in self.__collectors:
             c.start()
