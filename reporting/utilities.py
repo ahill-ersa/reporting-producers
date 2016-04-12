@@ -48,6 +48,7 @@ def get_log_level(verbose):
     return logging.DEBUG
 
 def get_hostname():
+    """Get the host name of a producer"""
     global global_vars
     if global_vars is not None and 'hostname' in global_vars:
         return global_vars['hostname']
