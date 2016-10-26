@@ -9,6 +9,7 @@ from reporting.outputs import IOutput
 import json
 import time
 import os
+import re
 
 log = getLogger(__name__)
 
@@ -113,6 +114,9 @@ class AccountingLogParser(IParser):
         "d" : "deleted"
     }
 
+    def __init__(self, ignore_regex=[]):
+	self.__ignore_regex = list(map(lambda x: re.compile(x), ignore_regex))
+
     def parse(self, line):
         data = {}
 
@@ -120,6 +124,10 @@ class AccountingLogParser(IParser):
 
         data["timestamp"] = int(time.mktime(time.strptime(tokens[0], "%m/%d/%Y %H:%M:%S")))
         data["hostname"] = get_hostname()
+
+        for regex in self.__ignore_regex:
+            if regex.match(line):
+                return {}
 
         for state in self.JOB_STATES:
             if state == tokens[1]:

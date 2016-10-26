@@ -133,6 +133,9 @@ collector:
         parser:
             type: class
             name: reporting.plugins.pbs.AccountingLogParser
+            arguments:
+                ignore_regex:
+                    - .* account=[^ ]+ .*
         output: kafka-http
         metadata:
             schema: pbs.accounting.log
