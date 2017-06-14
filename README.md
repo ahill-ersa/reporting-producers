@@ -25,12 +25,22 @@ collector:
             version: 1
 ```
 
-### Sections
+### Sections in a config YAML file
 
 - global
-- collector
-- trailer: if input type is a trailer, database file name and related information
-- logging: logging related
+- collector: aka producers and each has:
+  - input
+  - parser
+  - output: one of output handlers defined at the top level
+  - metadata
+- tailer: if input type is a tailer, database file name and related information
+- logging: logging related, verbose level: 0: error, 1: warning, 2: info. default: debug
+- output: output handler configuration
+  - kafka-http: Reporting API server (kafka's http front end)
+  - buffer: local cache that holds data temporarily before pushing to server
+  - file:  file output for testing (everything message will be saved into this file)
+- pusher: a pusher to push data in local cache, optional?
+
 
 ### Attributes of a `collector`
 
@@ -39,17 +49,15 @@ collector:
   - type: define the type of source from which information is collected
     - file: single file
     - command: an executable which generates information for collecting
-    - trailer: a direcotry with a tracking sqlite db to remeber which file was the last processed
+    - tailer: a directory with a tracking sqlite db to remember which file was the last processed
 
-### Generated JSON structure:
+### Expected JSON structure with all required keys:
 
 ```json
 {
   "schema": "the type of this record (e.g. zfs.kstat)",
   "version": "the version of the above type (e.g. 1, 2, 3, ...)",
   "id": "a uuid for this record",
-  "timestamp": "seconds since epoch (integer)",
-  "hostname": "host which generated this record (e.g. blah.ersa.edu.au)",
   "session": "a uuid for this session (session = a single execution of the producer)",
   "data": {
     "a" : "dictionary",
@@ -62,16 +70,23 @@ collector:
 }
 ```
 
-Example:
+Example of an actual content of a message with extra optional keys:
 
 ```json
 {
-  "schema": "iostat.osx",
+  "id": "d87ad526-00b7-4398-b4b5-7f2da16f52d4",
+  "schema": "nova.list",
+  "session": "69212ffa-aae9-492b-a24d-3c968886f5f0",
+  "source": "130.220.207.169",
+  "timestamp": 1467374594114,
+  "user_agent": "Python-urllib/2.7",
   "version": 1,
-  "id": "c924dafc-e9ed-47ca-93d9-3ede92516391",
-  "session": "b88ab7e6-86f6-40cf-9c2d-c8a5a8a8da1b",
-  "timestamp": 1428374685,
-  "hostname": "transmat.local",
-  "data": {"kb/t": 110.78, "tps": 23, "mb/s": 2.47}
+  "data": {
+    "timestamp": 1497054079,
+    "hostname": "cw-monitoring.sa.nectar.org.au",
+    "kb/t": 110.78,
+    "tps": 23,
+    "mb/s": 2.47
+  }
 }
 ```

@@ -58,40 +58,41 @@ class ProducerDaemon(Daemon):
         self.__running=False
 
     def init(self):
+        """Set up all necessary directories and etc"""
         if 'global' in config:
-            global_vars=config['global']
+            global_vars = config['global']
             set_global(global_vars)
 
-        for n,cfg in config['output'].iteritems():
-            if n=='buffer':
+        for n, cfg in config['output'].iteritems():
+            if n == 'buffer':
                 if not 'directory' in cfg:
-                    print("ERROR: buffer directory not specified in config.")
+                    print "ERROR: buffer directory not specified in config."
                     return False
-                buffer_dir=cfg['directory']
+                buffer_dir = cfg['directory']
                 if os.path.exists(buffer_dir) and (not os.path.isdir(buffer_dir)):
-                    print("ERROR: buffer directory exists but it is not a directory.")
+                    print "ERROR: buffer directory exists but it is not a directory."
                     return False
                 if not os.path.exists(buffer_dir):
-                    log.info("Creating buffer directory %s." % buffer_dir)
+                    log.info("Creating buffer directory %s.", buffer_dir)
                     os.makedirs(buffer_dir)
-                self.__outputs[n]=BufferOutput(cfg)
-            elif n=='kafka-http':
-                self.__outputs[n]=KafkaHTTPOutput(cfg)
-            elif n=='file':
-                self.__outputs[n]=FileOutput(cfg)
+                self.__outputs[n] = BufferOutput(cfg)
+            elif n == 'kafka-http':
+                self.__outputs[n] = KafkaHTTPOutput(cfg)
+            elif n == 'file':
+                self.__outputs[n] = FileOutput(cfg)
             elif 'class' in cfg:
-                arguments={}
+                arguments = {}
                 if 'arguments' in cfg:
-                    arguments=cfg['arguments']
-                self.__outputs[n]=init_object(cfg['class'], **arguments)
+                    arguments = cfg['arguments']
+                self.__outputs[n] = init_object(cfg['class'], **arguments)
 
         if 'pusher' in config:
             if not 'directory' in config['pusher'] or not 'output' in config['pusher']:
-                print("ERROR: need to speficity directory and output in pusher.")
+                print "ERROR: need to specify directory and output in pusher."
                 return False
 
         if 'tailer' in config:
-            self.__tailer=Tailer(config['tailer'])
+            self.__tailer = Tailer(config['tailer'])
 
         return True
 
@@ -101,19 +102,24 @@ class ProducerDaemon(Daemon):
         signal.signal(signal.SIGINT, self.__sigTERMhandler)
         # Ensure unhandled exceptions are logged
         sys.excepthook = excepthook
-        log.info("Reporting producer started at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        log.info("Reporting producer started at %s",
+                 datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
         if 'pusher' in config:
-            pusher=Pusher(self.__outputs[config['pusher']['output']], config['pusher']['directory'], config['pusher'].get('batch',1), config['pusher'].get('stats_on',False), config['pusher'].get('back_off_indicator',None))
-            pusher.daemon=True
+            pusher = Pusher(self.__outputs[config['pusher']['output']],
+                            config['pusher']['directory'],
+                            config['pusher'].get('batch', 1),
+                            config['pusher'].get('stats_on', False),
+                            config['pusher'].get('back_off_indicator', None))
+            pusher.daemon = True
             pusher.start()
-            self.__pusher_pid=pusher.pid
-            log.info("started pusher pid=%d" % pusher.pid)
+            self.__pusher_pid = pusher.pid
+            log.info("started pusher pid=%d", pusher.pid)
         if 'buffer' in self.__outputs:
-            self.__buffer_thread=BufferThread(self.__outputs['buffer'])
+            self.__buffer_thread = BufferThread(self.__outputs['buffer'])
         if 'collector' in config:
             for collector_config in config['collector']:
-                log.debug("Initiating collector %s" % collector_config)
-                log.debug("self.__outputs: %s" % self.__outputs)
+                log.debug("Initiating collector %s", collector_config)
+                log.debug("self.__outputs: %s", self.__outputs)
                 c = Collector(collector_config, config['collector'][collector_config],
                               self.__outputs[config['collector'][collector_config]['output']],
                               self.__tailer)
@@ -136,7 +142,8 @@ class ProducerDaemon(Daemon):
         for c in self.__collectors:
             if c.is_alive():
                 c.join()
-        log.info("Reporting producer stopped at %s" % datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        log.info("Reporting producer stopped at %s",
+                 datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 
     def console(self, message):
         if message=="config":

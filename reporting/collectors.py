@@ -231,14 +231,14 @@ class Collector(threading.Thread):
         log.info("Collector %s has stopped." % self.__collector_name)
 
     def generate_payload(self, data):
+        """Parse raw data and package the result in required format"""
         if self.__parser:
-            data=self.__parser.parse(data)
-        log.debug("parsed data %s"%data)
-        payload={"id": str(uuid.uuid4()), "session": self.__session_id}
-        payload['data']=data
+            data = self.__parser.parse(data)
+        log.debug("parsed data %s", data)
+        payload = {"id": str(uuid.uuid4()), "session": self.__session_id}
+        payload['data'] = data
         if 'metadata' in self.__config:
             for m in self.__config['metadata']:
-                payload[m]=self.__config['metadata'][m]
-        log.debug("payload to push: %s"%payload)
+                payload[m] = self.__config['metadata'][m]
+        log.debug("payload to push: %s", payload)
         return payload
-
